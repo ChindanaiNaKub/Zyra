@@ -1,0 +1,164 @@
+{
+  "style": "experimental",
+  "style_weights": {
+    "material": 0.95,
+    "center_control": 1.05,
+    "rook_files": 1.05,
+    "mobility": 1.25,
+    "king_safety": 0.9,
+    "attacking_motifs": 1.2,
+    "initiative": 1.1
+  },
+  "max_playouts": 100,
+  "seed": 42,
+  "positions": {
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1": {
+      "evaluation": 0.0,
+      "explanation": {
+        "total": 0.0,
+        "terms": {
+          "material": 0.0,
+          "attacking_motifs": 0.0,
+          "center_control": 0.0,
+          "rook_files": 0.0,
+          "mobility": 0.0,
+          "king_safety": 0.0,
+          "initiative": 0.0
+        },
+        "style_weights": {
+          "material": 0.95,
+          "center_control": 1.05,
+          "rook_files": 1.05,
+          "mobility": 1.25,
+          "king_safety": 0.9,
+          "attacking_motifs": 1.2,
+          "initiative": 1.1
+        },
+        "log": [
+          "Evaluation terms: {'material': 0.0, 'attacking_motifs': 0.0, 'center_control': 0.0, 'rook_files': 0.0, 'mobility': 0.0, 'king_safety': 0.0, 'initiative': 0.0}",
+          "Applied style weights: {'material': 0.95, 'center_control': 1.05, 'rook_files': 1.05, 'mobility': 1.25, 'king_safety': 0.9, 'attacking_motifs': 1.2, 'initiative': 1.1}",
+          "Total score (cp): 0.0"
+        ]
+      },
+      "move_ordering": [
+        "Move(from=113, to=82, promo=None)",
+        "Move(from=118, to=85, promo=None)",
+        "Move(from=113, to=80, promo=None)",
+        "Move(from=118, to=87, promo=None)",
+        "Move(from=100, to=68, promo=None)"
+      ],
+      "best_move": "Move(from=118, to=85, promo=None)"
+    },
+    "r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 4": {
+      "evaluation": 9.35,
+      "explanation": {
+        "total": 9.35,
+        "terms": {
+          "material": 0.0,
+          "attacking_motifs": -5.0,
+          "center_control": 10.0,
+          "rook_files": 0.0,
+          "mobility": 7.0,
+          "king_safety": -8.0,
+          "initiative": 3.0
+        },
+        "style_weights": {
+          "material": 0.95,
+          "center_control": 1.05,
+          "rook_files": 1.05,
+          "mobility": 1.25,
+          "king_safety": 0.9,
+          "attacking_motifs": 1.2,
+          "initiative": 1.1
+        },
+        "log": [
+          "Evaluation terms: {'material': 0.0, 'attacking_motifs': -5.0, 'center_control': 10.0, 'rook_files': 0.0, 'mobility': 7.0, 'king_safety': -8.0, 'initiative': 3.0}",
+          "Applied style weights: {'material': 0.95, 'center_control': 1.05, 'rook_files': 1.05, 'mobility': 1.25, 'king_safety': 0.9, 'attacking_motifs': 1.2, 'initiative': 1.1}",
+          "Total score (cp): 9.35"
+        ]
+      },
+      "move_ordering": [
+        "Move(from=67, to=52, promo=None)",
+        "Move(from=114, to=54, promo=None)",
+        "Move(from=115, to=55, promo=None)",
+        "Move(from=115, to=70, promo=None)",
+        "Move(from=82, to=51, promo=None)"
+      ],
+      "best_move": "Move(from=118, to=100, promo=None)"
+    },
+    "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 2 3": {
+      "evaluation": -2.4,
+      "explanation": {
+        "total": -2.4,
+        "terms": {
+          "material": 0.0,
+          "attacking_motifs": -5.0,
+          "center_control": 0.0,
+          "rook_files": 0.0,
+          "mobility": 2.0,
+          "king_safety": 0.0,
+          "initiative": 1.0
+        },
+        "style_weights": {
+          "material": 0.95,
+          "center_control": 1.05,
+          "rook_files": 1.05,
+          "mobility": 1.25,
+          "king_safety": 0.9,
+          "attacking_motifs": 1.2,
+          "initiative": 1.1
+        },
+        "log": [
+          "Evaluation terms: {'material': 0.0, 'attacking_motifs': -5.0, 'center_control': 0.0, 'rook_files': 0.0, 'mobility': 2.0, 'king_safety': 0.0, 'initiative': 1.0}",
+          "Applied style weights: {'material': 0.95, 'center_control': 1.05, 'rook_files': 1.05, 'mobility': 1.25, 'king_safety': 0.9, 'attacking_motifs': 1.2, 'initiative': 1.1}",
+          "Total score (cp): -2.4"
+        ]
+      },
+      "move_ordering": [
+        "Move(from=115, to=85, promo=None)",
+        "Move(from=117, to=49, promo=None)",
+        "Move(from=117, to=66, promo=None)",
+        "Move(from=113, to=82, promo=None)",
+        "Move(from=118, to=85, promo=None)"
+      ],
+      "best_move": "Move(from=118, to=100, promo=None)"
+    },
+    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1": {
+      "evaluation": -16.9,
+      "explanation": {
+        "total": -16.9,
+        "terms": {
+          "material": 100.0,
+          "attacking_motifs": -42.0,
+          "center_control": 10.0,
+          "rook_files": 0.0,
+          "mobility": -40.0,
+          "king_safety": 0.0,
+          "initiative": -20.0
+        },
+        "style_weights": {
+          "material": 0.95,
+          "center_control": 1.05,
+          "rook_files": 1.05,
+          "mobility": 1.25,
+          "king_safety": 0.9,
+          "attacking_motifs": 1.2,
+          "initiative": 1.1
+        },
+        "log": [
+          "Evaluation terms: {'material': 100.0, 'attacking_motifs': -42.0, 'center_control': 10.0, 'rook_files': 0.0, 'mobility': -40.0, 'king_safety': 0.0, 'initiative': -20.0}",
+          "Applied style weights: {'material': 0.95, 'center_control': 1.05, 'rook_files': 1.05, 'mobility': 1.25, 'king_safety': 0.9, 'attacking_motifs': 1.2, 'initiative': 1.1}",
+          "Total score (cp): -16.9"
+        ]
+      },
+      "move_ordering": [
+        "Move(from=85, to=67, promo=None)",
+        "Move(from=65, to=50, promo=None)",
+        "Move(from=117, to=101, promo=None)",
+        "Move(from=66, to=50, promo=None)",
+        "Move(from=99, to=67, promo=None)"
+      ],
+      "best_move": "Move(from=118, to=119, promo=None)"
+    }
+  }
+}

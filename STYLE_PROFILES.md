@@ -98,9 +98,31 @@ CUSTOM_STYLE = {
 
 ## Search Integration
 
-Style profiles integrate with the MCTS search engine through move ordering hooks:
+Style profiles integrate with the MCTS search engine through multiple mechanisms:
 
-### Move Ordering with Style
+### Style-Aware MCTS Search
+```python
+from search.mcts import MCTSSearch
+from eval.heuristics import get_style_profile
+
+# Create search with style profile directly
+search = MCTSSearch(
+    max_playouts=1000,
+    style="aggressive"  # Can use string name or weights dict
+)
+
+# Search with full style integration
+best_move = search.search(position)
+```
+
+### Style-Aware Playout Policies
+The MCTS simulation phase now uses style-weighted move selection instead of pure random selection:
+
+- **Style-weighted probability distribution**: Moves are selected based on evaluation scores using softmax with temperature
+- **Bounded randomness**: Maintains exploration while allowing style expression
+- **Configurable temperature**: Controls the balance between randomness and style influence
+
+### Style-Aware Move Ordering
 ```python
 from search.mcts import MCTSSearch, style_aware_move_ordering
 from eval.heuristics import get_style_profile
@@ -108,15 +130,23 @@ from eval.heuristics import get_style_profile
 # Load style profile
 weights = get_style_profile("aggressive")
 
-# Create search with style-aware move ordering
+# Create search with style-aware move ordering hook
 search = MCTSSearch(
     max_playouts=1000,
-    move_ordering_hook=lambda pos, moves: style_aware_move_ordering(pos, moves, weights)
+    move_ordering_hook=lambda pos, moves: style_aware_move_ordering(pos, moves, weights),
+    style=weights  # Also applies to playout policy
 )
 
 # Search with style influence
 best_move = search.search(position)
 ```
+
+### Evaluation-Based Tie-Breaking
+When moves have equal heuristic priority, style profiles influence the ordering through evaluation scores:
+
+- **Heuristic priority first**: Captures, promotions, checks maintain highest priority
+- **Style-weighted tie-breaking**: Within each priority group, moves are ordered by style-influenced evaluation
+- **Consistent ordering**: Same style profile always produces the same move ordering
 
 ### Style-Aware UCI Engine
 The UCI engine automatically applies style profiles when configured:
@@ -240,6 +270,37 @@ To add a new predefined profile:
 4. Add test cases for the profile
 5. Update this documentation
 
+## Behavioral Testing
+
+The engine includes comprehensive behavioral testing to ensure style profiles create observable differences:
+
+### Stochastic Exploration Tests
+- **Fixed seed determinism**: Same seed produces identical results
+- **Varied seed diversity**: Different seeds produce varied but valid results
+- **Bounded randomness**: Style influence maintains exploration bounds
+
+### Style Differentiation Tests
+- **Aggressive vs defensive**: Test tactical vs positional preferences
+- **Experimental patterns**: Verify unconventional style behaviors
+- **Position-specific tests**: Validate characteristic behaviors on key positions
+
+### Regression Safeguards
+- **Style output snapshots**: Golden baseline files for behavioral drift detection
+- **Smoke games**: End-to-end self-play validation with limited depth/nodes
+- **Automated validation**: CI integration for behavioral consistency
+
+### Running Behavioral Tests
+```bash
+# Run all behavioral tests
+python -m pytest tests/test_behavioral_style_integration.py -v
+
+# Run smoke games
+python -m pytest tests/test_smoke_games.py -v
+
+# Generate style output baselines
+python -m tests.baseline_style_outputs
+```
+
 ## Examples
 
 See the `examples/` directory for:
@@ -247,3 +308,4 @@ See the `examples/` directory for:
 - Position analysis with different styles
 - Custom profile creation scripts
 - Style tuning tutorials
+- Behavioral testing examples

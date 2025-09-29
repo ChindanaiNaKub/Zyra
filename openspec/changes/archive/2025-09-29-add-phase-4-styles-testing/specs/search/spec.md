@@ -1,8 +1,5 @@
-# search Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change 2025-09-29-add-phase-2-search. Update Purpose after archive.
-## Requirements
 ### Requirement: Search Core (MCTS baseline)
 The system SHALL provide a Monte Carlo Tree Search (MCTS) with style-aware integration that creates observable behavioral differences between style profiles.
 
@@ -56,6 +53,8 @@ The system SHALL integrate with the UCI `go` command, interpreting `movetime`, `
 #### Scenario: Style-aware UCI search
 - **WHEN** running UCI search with different style configurations
 - **THEN** the engine produces different move selections that reflect the configured style
+
+## ADDED Requirements
 
 ### Requirement: Style-Aware Playout Policies
 The system SHALL implement style-influenced playout policies that maintain bounded randomness while expressing personality characteristics during MCTS simulation.

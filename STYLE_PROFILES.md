@@ -107,6 +107,39 @@ CUSTOM_STYLE = {
 - `creative_patterns`: Rewards artistic piece coordination
 - `balance`: Emphasis on positional balance
 
+## Search Integration
+
+Style profiles integrate with the MCTS search engine through move ordering hooks:
+
+### Move Ordering with Style
+```python
+from search.mcts import MCTSSearch, style_aware_move_ordering
+from eval.heuristics import get_style_profile
+
+# Load style profile
+weights = get_style_profile("aggressive")
+
+# Create search with style-aware move ordering
+search = MCTSSearch(
+    max_playouts=1000,
+    move_ordering_hook=lambda pos, moves: style_aware_move_ordering(pos, moves, weights)
+)
+
+# Search with style influence
+best_move = search.search(position)
+```
+
+### Style-Aware UCI Engine
+The UCI engine automatically applies style profiles when configured:
+
+```python
+from interfaces.uci import UCIEngine
+from eval.heuristics import get_style_profile
+
+engine = UCIEngine()
+# Engine will use style profiles for move ordering during search
+```
+
 ## Configuration Usage
 
 ### Loading a Profile

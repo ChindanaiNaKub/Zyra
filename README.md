@@ -94,7 +94,7 @@ Follow these conventions:
 ### Core Components
 
 - **`core/`**: Board representation, move generation, game rules
-- **`search/`**: MCTS and Beam Search implementations
+- **`search/`**: Monte Carlo Tree Search (MCTS) with configurable playout policies
 - **`eval/`**: Explainable evaluation heuristics
 - **`interfaces/`**: UCI protocol and CLI adapters
 - **`cli/`**: Command-line tools and utilities
@@ -152,10 +152,41 @@ MIT License - see LICENSE file for details.
 - Built with modern Python tooling and best practices
 - Designed for educational and experimental purposes
 
+## Search Engine
+
+Zyra uses Monte Carlo Tree Search (MCTS) as its primary search algorithm with the following features:
+
+### MCTS Configuration
+- **Playout Limits**: Configurable maximum playouts per search
+- **Time Control**: Movetime limits for tournament play
+- **Deterministic Mode**: Fixed seed support for reproducible analysis
+- **Move Ordering**: Heuristic prioritization of captures, checks, and promotions
+
+### UCI Integration
+- **`go movetime X`**: Search with X milliseconds time limit
+- **`go nodes N`**: Search with N maximum playouts
+- **`go depth D`**: Unsupported (logs non-fatal warning)
+- **`bestmove`**: Returns the selected move in UCI format
+
+### Usage Examples
+```bash
+# UCI mode with time control
+echo "go movetime 1000" | python -m zyra.interfaces.uci
+
+# Programmatic search
+from search.mcts import MCTSSearch
+from core.board import Board
+
+board = Board()
+board.set_startpos()
+search = MCTSSearch(max_playouts=1000, seed=42)
+best_move = search.search(board)
+```
+
 ## Roadmap
 
-- [ ] Complete board representation and move generation
-- [ ] Implement MCTS search with configurable policies
+- [x] Complete board representation and move generation
+- [x] Implement MCTS search with configurable policies
 - [ ] Add explainable evaluation heuristics
 - [ ] UCI protocol compliance testing
 - [ ] Performance optimization and profiling

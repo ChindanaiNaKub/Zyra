@@ -117,3 +117,12 @@ class Board:
     def set_startpos(self) -> None:
         """Load the standard chess starting position."""
         self.load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+
+    def copy_from(self, other: "Board") -> None:
+        """Copy state from another board."""
+        self.squares = other.squares.copy()
+        self.side_to_move = other.side_to_move
+        self.castling = other.castling
+        self.ep_square = other.ep_square
+        self.halfmove_clock = other.halfmove_clock
+        self.fullmove_number = other.fullmove_number

@@ -10,6 +10,7 @@ from typing import List, Optional
 
 from core.board import Board
 from core.moves import Move, generate_moves, make_move, parse_uci_move, unmake_move
+from search.mcts import MCTSSearch, heuristic_move_ordering
 
 
 class UCIEngine:
@@ -18,7 +19,7 @@ class UCIEngine:
     def __init__(self) -> None:
         """Initialize UCI engine."""
         self.position: Board = Board()
-        self.search_engine = None
+        self.search_engine: Optional[MCTSSearch] = None
 
     def handle_command(self, command: str) -> Optional[str]:
         """Handle UCI protocol commands."""
@@ -46,13 +47,7 @@ class UCIEngine:
                 pass
             return None
         elif cmd == "go":
-            # Minimal: pick a random legal move
-            legal_moves = generate_moves(self.position)
-            if legal_moves:
-                chosen = random.choice(legal_moves)
-                uci_move = f"{self._sq(chosen.from_square)}{self._sq(chosen.to_square)}"
-                return f"bestmove {uci_move}"
-            return "bestmove 0000"
+            return self._handle_go_command(parts[1:])
         elif cmd == "quit":
             sys.exit(0)
 
@@ -105,6 +100,64 @@ class UCIEngine:
         except Exception:
             # Ignore malformed moves for robustness in early phase
             return
+
+    def _handle_go_command(self, args: List[str]) -> str:
+        """Handle UCI go command with movetime and nodes parameters."""
+        movetime_ms = None
+        max_nodes = None
+        seed = None
+
+        # Parse parameters
+        i = 0
+        while i < len(args):
+            if args[i] == "movetime" and i + 1 < len(args):
+                movetime_ms = int(args[i + 1])
+                i += 2
+            elif args[i] == "nodes" and i + 1 < len(args):
+                max_nodes = int(args[i + 1])
+                i += 2
+            elif args[i] == "depth" and i + 1 < len(args):
+                # Unsupported depth flag - log non-fatal note
+                print(
+                    f"info string Unsupported depth parameter {args[i + 1]}, using default behavior"
+                )
+                i += 2
+            else:
+                i += 1
+
+        # Get legal moves first
+        legal_moves = generate_moves(self.position)
+        if not legal_moves:
+            return "bestmove 0000"
+
+        # If no search parameters, use random move (fallback)
+        if movetime_ms is None and max_nodes is None:
+            chosen = random.choice(legal_moves)
+            uci_move = f"{self._sq(chosen.from_square)}{self._sq(chosen.to_square)}"
+            return f"bestmove {uci_move}"
+
+        # Create search engine with parameters
+        max_playouts = max_nodes if max_nodes else 10000
+        self.search_engine = MCTSSearch(
+            max_playouts=max_playouts,
+            movetime_ms=movetime_ms,
+            seed=seed,
+            move_ordering_hook=heuristic_move_ordering,
+        )
+
+        # Run search
+        best_move = self.search_engine.search(self.position)
+
+        if best_move:
+            uci_move = f"{self._sq(best_move.from_square)}{self._sq(best_move.to_square)}"
+            if best_move.promotion:
+                uci_move += best_move.promotion.lower()
+            return f"bestmove {uci_move}"
+        else:
+            # Fallback to random move if search fails
+            chosen = random.choice(legal_moves)
+            uci_move = f"{self._sq(chosen.from_square)}{self._sq(chosen.to_square)}"
+            return f"bestmove {uci_move}"
 
     def _sq(self, index: int) -> str:
         file_idx = index & 0x7

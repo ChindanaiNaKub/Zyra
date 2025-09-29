@@ -1,8 +1,4 @@
-# interfaces-uci Specification
-
-## Purpose
-TBD - created by archiving change add-phase-1-foundations. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
 ### Requirement: Initial UCI Commands
 The system SHALL support a minimal UCI command set: `uci`, `isready`, `ucinewgame`, `position`, `go`, `stop`, `quit`.
 

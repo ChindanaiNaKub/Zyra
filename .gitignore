@@ -71,3 +71,15 @@ data/
 # Tooling
 .tox/
 .nox/
+
+# Optional: additional Python/tool caches and reports
+.hypothesis/
+.pytype/
+.benchmarks/
+coverage.xml
+dmypy.json
+
+# Optional: platform-specific compiled artifacts
+*.pyd
+*.dll
+*.dylib

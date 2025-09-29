@@ -1,0 +1,73 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Build / packaging artifacts
+build/
+dist/
+wheels/
+.eggs/
+*.egg-info/
+*.egg
+zyra.egg-info/
+
+# Virtual environments and Python version managers
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Testing / coverage
+.pytest_cache/
+.coverage*
+htmlcov/
+.cache/
+
+# Type checkers / linters
+.mypy_cache/
+.pyre/
+.pyrightcache/
+.ruff_cache/
+.pylint.d/
+
+# Notebooks (none now, safe to ignore if added later)
+.ipynb_checkpoints
+
+# IDE / Editor settings
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Temporary / scratch data
+tmp/
+temp/
+data/
+
+# SQLite / local DBs
+*.sqlite3
+
+# Tooling
+.tox/
+.nox/

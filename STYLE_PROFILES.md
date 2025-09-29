@@ -13,12 +13,13 @@ Favors attacking moves, tactical complications, and dynamic play.
 
 ```python
 AGGRESSIVE_WEIGHTS = {
-    "attack_bonus": 1.5,        # Bonus for attacking enemy pieces
+    "material": 1.0,
+    "attacking_motifs": 1.3,   # Bonus for attacking enemy pieces and sacs
     "center_control": 1.2,      # Emphasis on central squares
-    "piece_mobility": 1.3,      # Rewards active piece placement
-    "king_safety": 0.8,         # Lower priority for defensive moves
-    "pawn_structure": 0.9,      # Less emphasis on pawn chains
-    "tactical_complications": 1.4,  # Seeks tactical opportunities
+    "rook_files": 1.1,          # Prefer open/semi-open files
+    "mobility": 1.15,           # Rewards active piece placement
+    "king_safety": 1.0,         # Standard safety consideration
+    "initiative": 1.2,          # Emphasize maintaining initiative
 }
 ```
 
@@ -33,12 +34,13 @@ Prioritizes king safety, solid positional play, and avoiding risks.
 
 ```python
 DEFENSIVE_WEIGHTS = {
-    "king_safety": 1.5,         # High priority for king protection
-    "pawn_structure": 1.3,      # Values solid pawn chains
-    "defensive_moves": 1.2,     # Rewards prophylactic moves
-    "attack_bonus": 0.7,        # Lower aggression
-    "center_control": 1.0,      # Standard central emphasis
-    "risk_aversion": 1.4,       # Avoids unclear positions
+    "material": 1.05,
+    "attacking_motifs": 0.9,
+    "center_control": 1.0,
+    "rook_files": 1.0,
+    "mobility": 0.95,
+    "king_safety": 1.3,
+    "initiative": 0.9,
 }
 ```
 
@@ -53,12 +55,13 @@ Explores unusual moves and creative patterns for educational value.
 
 ```python
 EXPERIMENTAL_WEIGHTS = {
-    "mobility": 1.4,            # High emphasis on piece freedom
-    "unusual_moves": 1.1,       # Slight bonus for non-standard moves
-    "creative_patterns": 1.2,   # Rewards artistic piece coordination
-    "balance": 0.9,             # Slightly less emphasis on material
-    "center_control": 1.0,      # Standard central play
-    "king_safety": 1.0,         # Standard safety consideration
+    "material": 0.95,
+    "attacking_motifs": 1.2,
+    "center_control": 1.05,
+    "rook_files": 1.05,
+    "mobility": 1.25,
+    "king_safety": 0.9,
+    "initiative": 1.1,
 }
 ```
 
@@ -83,29 +86,15 @@ CUSTOM_STYLE = {
 }
 ```
 
-### Available Weight Categories
+### Available Weight Categories (implemented)
 
-#### Material Factors
-- `material_balance`: Standard piece values (Queen=9, Rook=5, etc.)
-- `piece_activity`: Bonus for active vs passive pieces
-- `coordination_bonus`: Reward for piece cooperation
-
-#### Positional Factors
-- `center_control`: Control of central squares (d4, d5, e4, e5)
-- `pawn_structure`: Pawn chain and structure evaluation
-- `piece_mobility`: Number of legal moves available
-- `king_safety`: King shelter and defensive pieces
-
-#### Tactical Factors
-- `attack_bonus`: Bonus for attacking enemy pieces
-- `tactical_complications`: Seeks tactical opportunities
-- `defensive_moves`: Rewards prophylactic and defensive moves
-
-#### Style Modifiers
-- `risk_aversion`: Avoids unclear or risky positions
-- `unusual_moves`: Bonus for non-standard move patterns
-- `creative_patterns`: Rewards artistic piece coordination
-- `balance`: Emphasis on positional balance
+- `material`: Standard piece values (centipawns)
+- `attacking_motifs`: Attacks on enemy pieces and sacrifice motifs
+- `center_control`: Occupancy of d4/e4/d5/e5
+- `rook_files`: Rooks on open/semi-open files
+- `mobility`: Number of legal moves differential
+- `king_safety`: Pawn shield near king
+- `initiative`: Derived from mobility to reward maintaining pressure
 
 ## Search Integration
 
@@ -145,7 +134,7 @@ engine = UCIEngine()
 ### Loading a Profile
 
 ```python
-from zyra.eval.heuristics import get_style_profile, Evaluation
+from eval.heuristics import get_style_profile, Evaluation
 
 # Load predefined profile
 weights = get_style_profile("aggressive")
@@ -202,14 +191,21 @@ python -m zyra.cli.runner analyze --style aggressive "rnbqkbnr/pppppppp/8/8/8/8/
 Each evaluation includes an explainable breakdown showing how different factors contributed to the final score:
 
 ```python
-breakdown = evaluator.explain_evaluation(position)
+explain = evaluator.explain_evaluation(position)
 # Returns:
 {
-    "material": 0.2,
-    "center_control": 0.3,
-    "king_safety": -0.1,
-    "attack_bonus": 0.4,
-    "total": 0.8
+    "total": 35.0,
+    "terms": {
+        "material": 20.0,
+        "attacking_motifs": 10.0,
+        "center_control": 10.0,
+        "rook_files": 5.0,
+        "mobility": -8.0,
+        "king_safety": -2.0,
+        "initiative": -4.0
+    },
+    "style_weights": { ... },
+    "log": ["Evaluation terms: {...}", "Applied style weights: {...}", "Total score (cp): 35.0"]
 }
 ```
 

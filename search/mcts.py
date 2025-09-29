@@ -10,6 +10,7 @@ from typing import Any, Callable, List, Optional
 
 from core.board import Board
 from core.moves import Move, generate_moves, make_move, unmake_move
+from eval.heuristics import Evaluation, parse_style_config
 
 
 class MCTSNode:
@@ -64,16 +65,19 @@ class MCTSSearch:
         movetime_ms: Optional[int] = None,
         seed: Optional[int] = None,
         move_ordering_hook: Optional[Callable] = None,
+        style: Optional[dict or str] = None,
     ) -> None:
         """Initialize MCTS with limits and configuration."""
         self.max_playouts = max_playouts
         self.movetime_ms = movetime_ms
         self.move_ordering_hook = move_ordering_hook
         self.exploration_constant = 1.414
+        # Evaluation configuration
+        self.style_weights = parse_style_config(style)
+        self.evaluator = Evaluation(style_weights=self.style_weights)
 
-        # Set random seed for reproducibility
-        if seed is not None:
-            random.seed(seed)
+        # Per-instance RNG for reproducibility and isolation
+        self._rng = random.Random(seed)
 
     def search(self, position: Board) -> Optional[Move]:
         """Perform MCTS search and return best move."""
@@ -159,8 +163,8 @@ class MCTSSearch:
         depth = 0
 
         while moves and depth < max_depth:
-            # Pick random move from available moves
-            move = random.choice(moves)
+            # Pick random move using instance RNG
+            move = self._rng.choice(moves)
             make_move(position, move)
             depth += 1
 
@@ -168,9 +172,16 @@ class MCTSSearch:
             if self.move_ordering_hook:
                 moves = self.move_ordering_hook(position, moves)
 
-        # Return evaluation (simplified: 1.0 for win, 0.5 for draw, 0.0 for loss)
-        # For now, return random value as placeholder
-        return random.random()
+        # Return evaluation signal scaled to [0,1] from centipawn score
+        # Map centipawns via sigmoid-like scaling for stability
+        score_cp = self.evaluator.evaluate(position)
+        # Optionally could use explain for logging/debug
+        # explain = self.evaluator.explain_evaluation(position)
+        # Convert to 0..1 win likelihood-ish value
+        # 0 cp -> 0.5; +300 cp -> ~0.73; -300 cp -> ~0.27
+        scale = 300.0
+        value = 1.0 / (1.0 + pow(10.0, -score_cp / scale))
+        return float(value)
 
     def _backpropagation(self, node: MCTSNode, result: float) -> None:
         """Backpropagation phase: update statistics up the tree."""

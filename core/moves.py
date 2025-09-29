@@ -25,6 +25,21 @@ class Move:
         self.to_square = to_square
         self.promotion = promotion  # e.g., 'q', 'r', 'b', 'n' for UCI
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Move):
+            return False
+        return (
+            self.from_square == other.from_square
+            and self.to_square == other.to_square
+            and self.promotion == other.promotion
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.from_square, self.to_square, self.promotion))
+
+    def __repr__(self) -> str:
+        return f"Move(from={self.from_square}, to={self.to_square}, promo={self.promotion})"
+
 
 def _is_offboard(index: int) -> bool:
     return (index & 0x88) != 0

@@ -1,0 +1,6 @@
+pyproject.toml
+zyra.egg-info/PKG-INFO
+zyra.egg-info/SOURCES.txt
+zyra.egg-info/dependency_links.txt
+zyra.egg-info/requires.txt
+zyra.egg-info/top_level.txt

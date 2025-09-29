@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.12]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Lint with black
+      run: |
+        black --check .
+
+    - name: Lint with isort
+      run: |
+        isort --check-only .
+
+    - name: Type check with mypy
+      run: |
+        mypy core search eval interfaces cli --ignore-missing-imports
+
+    - name: Test with pytest
+      run: |
+        pytest tests/ -v
+
+    - name: Test CLI imports
+      run: |
+        python -c "import core, search, eval, interfaces, cli; print('All modules import successfully')"

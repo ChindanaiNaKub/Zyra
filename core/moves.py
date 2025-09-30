@@ -559,3 +559,45 @@ def get_game_result(board: Any, position_history: List[str]) -> str:
         return "repetition"
     else:
         return "ongoing"
+
+
+# ============================================================================
+# PERFORMANCE OPTIMIZATION: Use optimized versions when available
+# ============================================================================
+try:
+    from core.moves_optimized import (
+        OptimizedMoveGenerator,
+        generate_moves_optimized,
+        is_legal_move_optimized,
+    )
+
+    # Override standard functions with optimized versions for better performance
+    _generate_moves_standard = generate_moves
+    _is_legal_move_standard = is_legal_move
+
+    generate_moves = generate_moves_optimized  # type: ignore
+    is_legal_move = is_legal_move_optimized  # type: ignore
+
+    # Export the optimized generator
+    __all__ = [
+        "Move",
+        "generate_moves",
+        "is_legal_move",
+        "make_move",
+        "unmake_move",
+        "parse_uci_move",
+        "perft",
+        "OptimizedMoveGenerator",
+    ]
+
+except ImportError:
+    # Optimized version not available, use standard implementation
+    __all__ = [
+        "Move",
+        "generate_moves",
+        "is_legal_move",
+        "make_move",
+        "unmake_move",
+        "parse_uci_move",
+        "perft",
+    ]

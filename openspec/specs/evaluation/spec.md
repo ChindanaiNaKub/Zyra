@@ -100,7 +100,7 @@ The system SHALL integrate evaluation signals with the search algorithm for styl
 
 #### Scenario: Evaluation performance targets
 - **WHEN** running evaluation during search
-- **THEN** the system maintains evaluation speed targets (sufficient for ~10-20k nodes/sec search)
+- **THEN** the system maintains evaluation speed sufficient for 10,000-20,000 nodes/sec search performance with individual evaluations completing in under 0.1ms
 
 #### Scenario: Evaluation caching
 - **WHEN** evaluating the same position multiple times
@@ -166,3 +166,33 @@ The system SHALL integrate style profiles into MCTS playout policies to create p
 #### Scenario: Style playout diversity validation
 - **WHEN** testing style-aware playouts
 - **THEN** the system maintains sufficient diversity while expressing style characteristics
+
+### Requirement: Evaluation Performance Optimization
+The system SHALL implement evaluation optimizations to meet performance targets while maintaining accuracy and style-aware behavior.
+
+#### Scenario: Fast evaluation for common positions
+- **WHEN** evaluating standard chess positions
+- **THEN** the system completes evaluation in under 0.1ms per position
+
+#### Scenario: Evaluation performance profiling
+- **WHEN** performance profiling is enabled
+- **THEN** the system provides timing breakdowns for material, positional, and style evaluation components
+
+#### Scenario: Memory-efficient evaluation
+- **WHEN** running evaluation during extended search
+- **THEN** the system maintains memory usage within reasonable bounds without memory leaks
+
+### Requirement: Evaluation Performance Benchmarking
+The system SHALL provide evaluation performance benchmarking to validate speed targets and detect regressions.
+
+#### Scenario: Evaluation speed benchmarking
+- **WHEN** running evaluation benchmarks
+- **THEN** the system measures and reports evaluation speed, memory usage, and accuracy metrics
+
+#### Scenario: Evaluation performance regression testing
+- **WHEN** running evaluation regression tests
+- **THEN** the system detects when evaluation performance degrades below acceptable thresholds
+
+#### Scenario: Style evaluation performance consistency
+- **WHEN** testing evaluation performance across style profiles
+- **THEN** all style profiles maintain similar evaluation speed with minimal variance

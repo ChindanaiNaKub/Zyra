@@ -1,0 +1,197 @@
+{
+  "total_tests": 5,
+  "passed_tests": 1,
+  "failed_tests": 4,
+  "success_rate": 20.0,
+  "results": [
+    {
+      "test_name": "search_performance",
+      "metrics": {
+        "nodes_per_second": 51.31539420942904,
+        "total_nodes": 100,
+        "search_time_ms": 1948.7329590001536,
+        "evaluation_time_ms": 0.0,
+        "evaluations_per_second": 0.0,
+        "total_evaluations": 0,
+        "move_generation_time_ms": 0.0,
+        "moves_generated": 0,
+        "move_validation_time_ms": 0.0,
+        "moves_validated": 0,
+        "memory_usage_mb": 0.0,
+        "peak_memory_mb": 0.0,
+        "style_variance_percent": 0.0,
+        "targets_met": {
+          "search_baseline": false,
+          "search_complex": false,
+          "evaluation_speed": true,
+          "move_generation": true,
+          "move_validation": true,
+          "style_consistency": true
+        }
+      },
+      "passed": false,
+      "target_met": {
+        "search_baseline": false,
+        "search_complex": false,
+        "evaluation_speed": true,
+        "move_generation": true,
+        "move_validation": true,
+        "style_consistency": true
+      },
+      "notes": [
+        "Failed baseline target: 51 < 10,000 nodes/sec",
+        "Failed complex target: 51 < 5,000 nodes/sec"
+      ]
+    },
+    {
+      "test_name": "evaluation_performance",
+      "metrics": {
+        "nodes_per_second": 0.0,
+        "total_nodes": 0,
+        "search_time_ms": 0.0,
+        "evaluation_time_ms": 0.4210747769993759,
+        "evaluations_per_second": 2374875.092557449,
+        "total_evaluations": 1000,
+        "move_generation_time_ms": 0.0,
+        "moves_generated": 0,
+        "move_validation_time_ms": 0.0,
+        "moves_validated": 0,
+        "memory_usage_mb": 0.0,
+        "peak_memory_mb": 0.0,
+        "style_variance_percent": 0.0,
+        "targets_met": {
+          "search_baseline": false,
+          "search_complex": false,
+          "evaluation_speed": false,
+          "move_generation": true,
+          "move_validation": true,
+          "style_consistency": true
+        }
+      },
+      "passed": false,
+      "target_met": {
+        "search_baseline": false,
+        "search_complex": false,
+        "evaluation_speed": false,
+        "move_generation": true,
+        "move_validation": true,
+        "style_consistency": true
+      },
+      "notes": [
+        "Failed evaluation target: 0.421ms > 0.1ms per evaluation"
+      ]
+    },
+    {
+      "test_name": "move_generation_performance",
+      "metrics": {
+        "nodes_per_second": 0.0,
+        "total_nodes": 0,
+        "search_time_ms": 0.0,
+        "evaluation_time_ms": 0.0,
+        "evaluations_per_second": 0.0,
+        "total_evaluations": 0,
+        "move_generation_time_ms": 0.17926061199977994,
+        "moves_generated": 20000,
+        "move_validation_time_ms": 0.0,
+        "moves_validated": 0,
+        "memory_usage_mb": 0.0,
+        "peak_memory_mb": 0.0,
+        "style_variance_percent": 0.0,
+        "targets_met": {
+          "search_baseline": false,
+          "search_complex": false,
+          "evaluation_speed": true,
+          "move_generation": false,
+          "move_validation": true,
+          "style_consistency": true
+        }
+      },
+      "passed": false,
+      "target_met": {
+        "search_baseline": false,
+        "search_complex": false,
+        "evaluation_speed": true,
+        "move_generation": false,
+        "move_validation": true,
+        "style_consistency": true
+      },
+      "notes": [
+        "Failed move generation target: 0.179ms > 0.01ms"
+      ]
+    },
+    {
+      "test_name": "move_validation_performance",
+      "metrics": {
+        "nodes_per_second": 0.0,
+        "total_nodes": 0,
+        "search_time_ms": 0.0,
+        "evaluation_time_ms": 0.0,
+        "evaluations_per_second": 0.0,
+        "total_evaluations": 0,
+        "move_generation_time_ms": 0.0,
+        "moves_generated": 0,
+        "move_validation_time_ms": 0.14556760770001348,
+        "moves_validated": 20000,
+        "memory_usage_mb": 0.0,
+        "peak_memory_mb": 0.0,
+        "style_variance_percent": 0.0,
+        "targets_met": {
+          "search_baseline": false,
+          "search_complex": false,
+          "evaluation_speed": true,
+          "move_generation": true,
+          "move_validation": false,
+          "style_consistency": true
+        }
+      },
+      "passed": false,
+      "target_met": {
+        "search_baseline": false,
+        "search_complex": false,
+        "evaluation_speed": true,
+        "move_generation": true,
+        "move_validation": false,
+        "style_consistency": true
+      },
+      "notes": [
+        "Failed move validation target: 0.146ms > 0.005ms"
+      ]
+    },
+    {
+      "test_name": "style_consistency",
+      "metrics": {
+        "nodes_per_second": 0.0,
+        "total_nodes": 0,
+        "search_time_ms": 0.0,
+        "evaluation_time_ms": 0.0,
+        "evaluations_per_second": 0.0,
+        "total_evaluations": 0,
+        "move_generation_time_ms": 0.0,
+        "moves_generated": 0,
+        "move_validation_time_ms": 0.0,
+        "moves_validated": 0,
+        "memory_usage_mb": 0.0,
+        "peak_memory_mb": 0.0,
+        "style_variance_percent": 0.22194898435044136,
+        "targets_met": {
+          "search_baseline": false,
+          "search_complex": false,
+          "evaluation_speed": true,
+          "move_generation": true,
+          "move_validation": true,
+          "style_consistency": true
+        }
+      },
+      "passed": true,
+      "target_met": {
+        "search_baseline": false,
+        "search_complex": false,
+        "evaluation_speed": true,
+        "move_generation": true,
+        "move_validation": true,
+        "style_consistency": true
+      },
+      "notes": []
+    }
+  ]
+}

@@ -10,7 +10,8 @@ from typing import List, Optional
 
 from core.board import Board
 from core.moves import Move, generate_moves, make_move, parse_uci_move, unmake_move
-from search.mcts import MCTSSearch, heuristic_move_ordering
+from search.mcts import heuristic_move_ordering
+from search.mcts_optimized import OptimizedMCTSSearch
 
 
 class UCIEngine:
@@ -19,7 +20,7 @@ class UCIEngine:
     def __init__(self) -> None:
         """Initialize UCI engine."""
         self.position: Board = Board()
-        self.search_engine: Optional[MCTSSearch] = None
+        self.search_engine: Optional[OptimizedMCTSSearch] = None
 
     def handle_command(self, command: str) -> Optional[str]:
         """Handle UCI protocol commands."""
@@ -136,13 +137,15 @@ class UCIEngine:
             uci_move = f"{self._sq(chosen.from_square)}{self._sq(chosen.to_square)}"
             return f"bestmove {uci_move}"
 
-        # Create search engine with parameters
+        # Create optimized search engine with parameters
         max_playouts = max_nodes if max_nodes else 10000
-        self.search_engine = MCTSSearch(
+        self.search_engine = OptimizedMCTSSearch(
             max_playouts=max_playouts,
             movetime_ms=movetime_ms,
             seed=seed,
             move_ordering_hook=heuristic_move_ordering,
+            enable_caching=True,
+            enable_move_ordering=True,
         )
 
         # Run search

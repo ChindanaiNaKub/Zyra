@@ -642,3 +642,29 @@ def _log(self, msg: str) -> None:
     self._log_buffer.append(msg)
     if len(self._log_buffer) > 100:
         self._log_buffer.pop(0)
+
+
+# ============================================================================
+# PERFORMANCE OPTIMIZATION: Use optimized versions when available
+# ============================================================================
+try:
+    from eval.heuristics_optimized import OptimizedEvaluation, quick_evaluate
+
+    # Store standard version as backup
+    _Evaluation_standard = Evaluation
+
+    # Use optimized evaluation as default
+    Evaluation = OptimizedEvaluation  # type: ignore
+
+    __all__ = [
+        "Evaluation",
+        "OptimizedEvaluation",
+        "quick_evaluate",
+        "parse_style_config",
+        "create_evaluator",
+        "get_style_profile",
+    ]
+
+except ImportError:
+    # Optimized version not available, use standard implementation
+    __all__ = ["Evaluation", "parse_style_config", "create_evaluator", "get_style_profile"]

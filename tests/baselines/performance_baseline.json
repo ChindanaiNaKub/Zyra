@@ -1,0 +1,145 @@
+{
+  "baselines": [
+    {
+      "test_name": "comprehensive_performance",
+      "baseline_metrics": {
+        "nodes_per_second": 10.678943379317992,
+        "total_nodes": 20,
+        "search_time_ms": 374.56889299992326,
+        "evaluation_time_ms": 0.0001674371998888091,
+        "evaluations_per_second": 238895538.3066786,
+        "total_evaluations": 200,
+        "move_generation_time_ms": 0.02840628040012234,
+        "moves_generated": 4000,
+        "move_validation_time_ms": 0.0002157175000047573,
+        "moves_validated": 4000,
+        "memory_usage_mb": 0.0,
+        "peak_memory_mb": 0.0,
+        "style_variance_percent": 0.9997470395849544,
+        "targets_met": {
+          "search_baseline": false,
+          "search_complex": false,
+          "evaluation_speed": true,
+          "move_generation": false,
+          "move_validation": true,
+          "style_consistency": true
+        }
+      },
+      "tolerance_percent": 10.0,
+      "created_at": "2025-09-30 14:01:59"
+    },
+    {
+      "test_name": "evaluation_performance",
+      "baseline_metrics": {
+        "nodes_per_second": 0.0,
+        "total_nodes": 0,
+        "search_time_ms": 0.0,
+        "evaluation_time_ms": 0.0008385060000364319,
+        "evaluations_per_second": 1192597309.925691,
+        "total_evaluations": 1000,
+        "move_generation_time_ms": 0.0,
+        "moves_generated": 0,
+        "move_validation_time_ms": 0.0,
+        "moves_validated": 0,
+        "memory_usage_mb": 0.0,
+        "peak_memory_mb": 0.0,
+        "style_variance_percent": 0.0,
+        "targets_met": {
+          "search_baseline": false,
+          "search_complex": false,
+          "evaluation_speed": true,
+          "move_generation": true,
+          "move_validation": true,
+          "style_consistency": true
+        }
+      },
+      "tolerance_percent": 10.0,
+      "created_at": "2025-09-30 14:01:59"
+    },
+    {
+      "test_name": "move_generation_performance",
+      "baseline_metrics": {
+        "nodes_per_second": 0.0,
+        "total_nodes": 0,
+        "search_time_ms": 0.0,
+        "evaluation_time_ms": 0.0,
+        "evaluations_per_second": 0.0,
+        "total_evaluations": 0,
+        "move_generation_time_ms": 0.14177533600013703,
+        "moves_generated": 20000,
+        "move_validation_time_ms": 0.0,
+        "moves_validated": 0,
+        "memory_usage_mb": 0.0,
+        "peak_memory_mb": 0.0,
+        "style_variance_percent": 0.0,
+        "targets_met": {
+          "search_baseline": false,
+          "search_complex": false,
+          "evaluation_speed": true,
+          "move_generation": false,
+          "move_validation": true,
+          "style_consistency": true
+        }
+      },
+      "tolerance_percent": 10.0,
+      "created_at": "2025-09-30 14:01:59"
+    },
+    {
+      "test_name": "search_performance",
+      "baseline_metrics": {
+        "nodes_per_second": 54.71907044556728,
+        "total_nodes": 100,
+        "search_time_ms": 1827.5164249998852,
+        "evaluation_time_ms": 0.0,
+        "evaluations_per_second": 0.0,
+        "total_evaluations": 0,
+        "move_generation_time_ms": 0.0,
+        "moves_generated": 0,
+        "move_validation_time_ms": 0.0,
+        "moves_validated": 0,
+        "memory_usage_mb": 0.0,
+        "peak_memory_mb": 0.0,
+        "style_variance_percent": 0.0,
+        "targets_met": {
+          "search_baseline": false,
+          "search_complex": false,
+          "evaluation_speed": true,
+          "move_generation": true,
+          "move_validation": true,
+          "style_consistency": true
+        }
+      },
+      "tolerance_percent": 10.0,
+      "created_at": "2025-09-30 14:02:04"
+    },
+    {
+      "test_name": "style_consistency",
+      "baseline_metrics": {
+        "nodes_per_second": 0.0,
+        "total_nodes": 0,
+        "search_time_ms": 0.0,
+        "evaluation_time_ms": 0.0,
+        "evaluations_per_second": 0.0,
+        "total_evaluations": 0,
+        "move_generation_time_ms": 0.0,
+        "moves_generated": 0,
+        "move_validation_time_ms": 0.0,
+        "moves_validated": 0,
+        "memory_usage_mb": 0.0,
+        "peak_memory_mb": 0.0,
+        "style_variance_percent": 4.757889776145563,
+        "targets_met": {
+          "search_baseline": false,
+          "search_complex": false,
+          "evaluation_speed": true,
+          "move_generation": true,
+          "move_validation": true,
+          "style_consistency": true
+        }
+      },
+      "tolerance_percent": 10.0,
+      "created_at": "2025-09-30 14:02:04"
+    }
+  ],
+  "updated_at": "2025-09-30 14:02:04"
+}

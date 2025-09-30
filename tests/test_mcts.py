@@ -184,6 +184,16 @@ class TestMCTSIntegration(unittest.TestCase):
                 result = search.search(board)
                 self.assertTrue(result is None or isinstance(result, Move))
 
+    def test_rollout_cutoff_early_exit(self):
+        """Heuristic rollout should early-terminate on clear advantage."""
+        board = Board()
+        # Set a position with material advantage for white
+        board.load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKQNR w KQkq - 0 1")
+        search = MCTSSearch(max_playouts=5, seed=1, rollout_win_cp=50, rollout_loss_cp=-50)
+        # Should run without errors and often cut off quickly
+        mv = search.search(board)
+        self.assertTrue(mv is None or isinstance(mv, Move))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -47,8 +47,21 @@ def test_explain_logging_contains_terms_and_weights() -> None:
         "mobility",
         "king_safety",
         "initiative",
+        "hanging_pieces",
+        "threat_bonus",
+        "check_urgency",
     ]:
         assert key in explain["terms"]
+
+
+def test_hanging_piece_penalty_simple() -> None:
+    board = Board()
+    # White queen unprotected attacked by black knight
+    board.load_fen("8/8/8/3n4/8/8/8/4Q3 w - - 0 1")
+    ev = Evaluation()
+    score = ev.evaluate(board)
+    # Penalize white for hanging queen -> negative score
+    assert score < 0
 
 
 def test_evaluation_performance_smoke() -> None:

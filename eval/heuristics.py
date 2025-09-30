@@ -112,6 +112,9 @@ class Evaluation:
 
         material_cp = self._score_material(position)
         attacking_cp = self._score_attacking_motifs(position)
+        hanging_cp = self._score_hanging_pieces(position)
+        threat_cp = self._score_threat_bonus(position)
+        check_urgency_cp = self._score_check_escape_urgency(position)
         center_cp = self._score_center_control(position)
         rook_files_cp = self._score_rook_files(position)
         mobility_cp = self._score_mobility(position)
@@ -126,6 +129,9 @@ class Evaluation:
             "mobility": float(mobility_cp),
             "king_safety": float(king_safety_cp),
             "initiative": float(initiative_cp),
+            "hanging_pieces": float(hanging_cp),
+            "threat_bonus": float(threat_cp),
+            "check_urgency": float(check_urgency_cp),
         }
 
         # Apply style weights
@@ -239,6 +245,115 @@ class Evaluation:
                         else:
                             bonus -= extra
         return bonus
+
+    def _score_hanging_pieces(self, position: Any) -> int:
+        """Penalize pieces that are attacked and insufficiently defended.
+
+        Very lightweight: if a piece is attacked and not defended by an equal or
+        higher number of friendly pieces, apply a penalty proportional to piece value.
+        """
+        from core.moves import _square_attacked_by  # type: ignore
+
+        penalty = 0
+        for idx in range(128):
+            if _is_offboard(idx):
+                continue
+            piece = position.squares[idx]
+            if piece == "\u0000" or piece.lower() == "k":
+                continue
+
+            is_white_piece = _is_white(piece)
+            attacked = _square_attacked_by(position, idx, by_white=not is_white_piece)
+            if not attacked:
+                continue
+
+            # Crude defender count by checking adjacent friendly attacks onto this square
+            defenders = 0
+            for off in [31, 33, 14, 18, -31, -33, -14, -18, 1, -1, 16, -16, 15, 17, -15, -17]:
+                t = idx + off
+                if _is_offboard(t):
+                    continue
+                p = position.squares[t]
+                if p == "\u0000" or _is_white(p) != is_white_piece:
+                    continue
+                defenders += 1
+
+            attackers = 1  # We know at least one attacker from attacked=True
+            val = PIECE_VALUES.get(piece.lower(), 0)
+            if attackers > defenders:
+                # Scale penalty; heavier for higher-valued pieces
+                delta = max(10, val // 10)
+                penalty += delta if not is_white_piece else -delta
+        return penalty
+
+    def _score_threat_bonus(self, position: Any) -> int:
+        """Bonus for creating threats on higher-value enemy pieces.
+
+        We approximate by counting current attacks from our pieces onto higher-value
+        enemy targets and grant a small bonus.
+        """
+        bonus = 0
+        for idx in range(128):
+            if _is_offboard(idx):
+                continue
+            piece = position.squares[idx]
+            if piece == "\u0000" or piece.lower() == "k":
+                continue
+            is_white_piece = _is_white(piece)
+            lower = piece.lower()
+
+            # generate target squares similar to _score_attacking_motifs
+            targets: List[int] = []
+            if lower == "n":
+                for off in [31, 33, 14, 18, -31, -33, -14, -18]:
+                    t = idx + off
+                    if not _is_offboard(t):
+                        targets.append(t)
+            elif lower in ("b", "r", "q"):
+                directions = []
+                if lower in ("b", "q"):
+                    directions += [15, 17, -15, -17]
+                if lower in ("r", "q"):
+                    directions += [16, -16, 1, -1]
+                for d in directions:
+                    t = idx + d
+                    while not _is_offboard(t):
+                        targets.append(t)
+                        if position.squares[t] != "\u0000":
+                            break
+                        t += d
+            else:  # pawn and others
+                for diag in (-15, -17) if is_white_piece else (15, 17):
+                    t = idx + diag
+                    if not _is_offboard(t):
+                        targets.append(t)
+
+            attacker_val = PIECE_VALUES.get(lower, 0)
+            for t in targets:
+                tp = position.squares[t]
+                if tp == "\u0000" or _is_white(tp) == is_white_piece:
+                    continue
+                target_val = PIECE_VALUES.get(tp.lower(), 0)
+                if target_val > attacker_val:
+                    inc = max(3, (target_val - attacker_val) // 50)
+                    bonus += inc if is_white_piece else -inc
+        return bonus
+
+    def _score_check_escape_urgency(self, position: Any) -> int:
+        """Increase urgency when side to move is in check.
+
+        If in check, apply a penalty scaled by scarcity of legal moves to encourage
+        escape priorities.
+        """
+        from core.moves import generate_moves, is_in_check
+
+        if not is_in_check(position):
+            return 0
+        legal = len(generate_moves(position))
+        # Larger penalty when fewer legal moves
+        penalty = max(15, 60 - 2 * legal)
+        # Penalty is for side to move being in danger
+        return -penalty if position.side_to_move == "w" else penalty
 
     def _score_center_control(self, position: Any) -> int:
         # Count occupancy of the four central squares

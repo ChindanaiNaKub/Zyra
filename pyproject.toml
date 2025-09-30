@@ -21,11 +21,15 @@ classifiers = [
     "Topic :: Games/Entertainment :: Board Games",
 ]
 
-dependencies = []
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+]
 
 [project.scripts]
 zyra = "zyra.cli.runner:main"
 zyra-uci = "zyra.interfaces.uci:main"
+zyra-web = "zyra.web.server:main"
 
 [tool.setuptools]
 include-package-data = true

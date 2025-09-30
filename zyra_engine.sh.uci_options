@@ -1,2 +1,4 @@
 id name Zyra
 id author Zyra Project
+info string Options: movetime, nodes. Depth unsupported and ignored.
+info string Engine applies a small movetime buffer for PV stability.

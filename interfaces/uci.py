@@ -180,9 +180,15 @@ class UCIEngine:
 
             seed = int(time.time() * 1000000) % (2**31)
 
+        # Apply a small safety margin to movetime to stabilize PV near deadlines
+        if movetime_ms is not None:
+            buffered_movetime = max(0, int(movetime_ms * 0.95))
+        else:
+            buffered_movetime = None
+
         self.search_engine = OptimizedMCTSSearch(
             max_playouts=max_playouts,
-            movetime_ms=movetime_ms,
+            movetime_ms=buffered_movetime,
             seed=seed,
             move_ordering_hook=heuristic_move_ordering,
             enable_caching=True,

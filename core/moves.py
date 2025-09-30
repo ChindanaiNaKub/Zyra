@@ -287,19 +287,24 @@ def _make_move(board: Any, move: Move) -> Tuple[str, Optional[int], Optional[str
         board.squares[rook_to_sq] = board.squares[rook_from_sq]
         board.squares[rook_from_sq] = "\u0000"
 
+    # Store the piece being moved for en passant logic
+    moved_piece = board.squares[move.from_square]
+
     # Handle en passant capture
     if (
         board.ep_square is not None
         and move.to_square == board.ep_square
-        and board.squares[move.from_square].lower() == "p"
+        and moved_piece.lower() == "p"
     ):
         # Remove the captured pawn (behind the destination square)
+        # White capture removes pawn at to+16 (one rank behind from white's perspective)
+        # Black capture removes pawn at to-16
         ep_capture_sq = move.to_square + (16 if board.side_to_move == "w" else -16)
         board.squares[ep_capture_sq] = "\u0000"
         captured = "P" if board.side_to_move == "b" else "p"  # The captured pawn
 
     # Regular move
-    board.squares[move.to_square] = board.squares[move.from_square]
+    board.squares[move.to_square] = moved_piece
     board.squares[move.from_square] = "\u0000"
 
     # Handle promotion (replace pawn with promoted piece of correct color)
@@ -311,10 +316,9 @@ def _make_move(board: Any, move: Move) -> Tuple[str, Optional[int], Optional[str
             board.squares[move.to_square] = promoted.lower()
 
     ep_prev = board.ep_square
-    board.ep_square = None
 
     # Set en passant square for double pawn pushes
-    if board.squares[move.to_square].lower() == "p":
+    if moved_piece.lower() == "p":
         if (
             board.side_to_move == "w"
             and (move.from_square >> 4) == 6
@@ -327,6 +331,10 @@ def _make_move(board: Any, move: Move) -> Tuple[str, Optional[int], Optional[str
             and (move.to_square >> 4) == 3
         ):
             board.ep_square = move.to_square - 16  # Behind the pawn
+        else:
+            board.ep_square = None  # Not a double pawn push
+    else:
+        board.ep_square = None  # Not a pawn move
 
     # Update move counters
     if captured != "\u0000" or board.squares[move.to_square].lower() == "p":
@@ -368,13 +376,16 @@ def _unmake_move(
         board.squares[rook_to_sq] = "\u0000"
 
     # Handle en passant unmake
+    # Detect en passant capture using the previous ep square, not current
     if (
-        board.ep_square is not None
-        and move.to_square == board.ep_square
-        and moved_piece
+        moved_piece
         and moved_piece.lower() == "p"
+        and ep_prev is not None
+        and move.to_square == ep_prev
+        and captured in ("P", "p")
     ):
-        # Restore the captured pawn
+        # Restore the captured pawn one square behind the destination
+        # Relative to the side that originally moved (current side_to_move after flip)
         ep_capture_sq = move.to_square + (16 if board.side_to_move == "w" else -16)
         board.squares[ep_capture_sq] = captured
 

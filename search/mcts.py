@@ -10,7 +10,10 @@ from typing import Any, Callable, List, Optional
 
 from core.board import Board
 from core.moves import Move, generate_moves, make_move, unmake_move
+from core.zobrist import zobrist_hash
 from eval.heuristics import Evaluation, parse_style_config
+
+from .tt import TranspositionTable
 
 
 class MCTSNode:
@@ -66,6 +69,9 @@ class MCTSSearch:
         seed: Optional[int] = None,
         move_ordering_hook: Optional[Callable] = None,
         style: Optional[dict or str] = None,
+        tt: Optional[TranspositionTable] = None,
+        rollout_win_cp: int = 800,
+        rollout_loss_cp: int = -800,
     ) -> None:
         """Initialize MCTS with limits and configuration."""
         self.max_playouts = max_playouts
@@ -75,6 +81,11 @@ class MCTSSearch:
         # Evaluation configuration
         self.style_weights = parse_style_config(style)
         self.evaluator = Evaluation(style_weights=self.style_weights)
+
+        # Transposition table and rollout cutoffs
+        self.tt = tt or TranspositionTable(max_entries=200_000)
+        self.rollout_win_cp = rollout_win_cp
+        self.rollout_loss_cp = rollout_loss_cp
 
         # Per-instance RNG for reproducibility and isolation
         self._rng = random.Random(seed)
@@ -126,6 +137,13 @@ class MCTSSearch:
             if not node.is_fully_expanded():
                 return node
             else:
+                # Before selecting, try to prime child stats from TT
+                for child in node.children:
+                    key = zobrist_hash(child.position)
+                    entry = self.tt.get(key)
+                    if entry is not None and child.visits == 0:
+                        child.visits = entry.visits
+                        child.value = entry.value
                 node = max(node.children, key=lambda c: c.get_ucb_score(self.exploration_constant))
         return node
 
@@ -155,6 +173,16 @@ class MCTSSearch:
 
         # Apply move ordering if hook is provided
         moves = generate_moves(position)
+        # Terminal handling: if no legal moves, decide by checkmate/stalemate
+        if not moves:
+            from core.moves import is_in_check  # local import to avoid cycles
+
+            if is_in_check(position):
+                # Side to move is checkmated -> previous player wins
+                return 0.0
+            else:
+                # Stalemate -> draw
+                return 0.5
         if self.move_ordering_hook:
             moves = self.move_ordering_hook(position, moves)
 
@@ -172,8 +200,16 @@ class MCTSSearch:
             if self.move_ordering_hook:
                 moves = self.move_ordering_hook(position, moves)
 
+            # Heuristic rollout cutoff: stop if clearly won/lost
+            score_cp = self.evaluator.evaluate(position)
+            if score_cp >= self.rollout_win_cp:
+                return 1.0
+            if score_cp <= self.rollout_loss_cp:
+                return 0.0
+
         # Return evaluation signal scaled to [0,1] from centipawn score
-        # Map centipawns via sigmoid-like scaling for stability
+        # If terminal by lack of moves, prefer checkmate distance by quick probe
+        # (simple: if current side to move has no legal moves, treat as win/loss)
         score_cp = self.evaluator.evaluate(position)
         # Optionally could use explain for logging/debug
         # explain = self.evaluator.explain_evaluation(position)
@@ -269,6 +305,12 @@ class MCTSSearch:
         while node is not None:
             node.visits += 1
             node.value += result
+            # Store aggregate stats in TT for node position
+            try:
+                key = zobrist_hash(node.position)
+                self.tt.store(key, node.visits, node.value)
+            except Exception:
+                pass
             node = node.parent
 
 

@@ -89,6 +89,16 @@ pytest --cov=zyra
 pytest tests/test_board.py
 ```
 
+### OpenSpec Validation
+
+This project uses OpenSpec for spec-driven changes. Validate proposals and specs locally:
+
+```bash
+openspec list --specs
+openspec list
+openspec validate <change-id> --strict
+```
+
 ### Code Style
 
 Follow these conventions:
@@ -170,12 +180,16 @@ Zyra uses Monte Carlo Tree Search (MCTS) as its primary search algorithm with th
 - **Time Control**: Movetime limits for tournament play
 - **Deterministic Mode**: Fixed seed support for reproducible analysis
 - **Move Ordering**: Heuristic prioritization of captures, checks, and promotions
+- **Transposition Table**: Lightweight TT reuses node statistics keyed by Zobrist hash (baseline MCTS)
+- **Heuristic Rollout Cutoffs**: Early terminate playouts on clear wins/losses using evaluation thresholds
 
 ### UCI Integration
 - **`go movetime X`**: Search with X milliseconds time limit
 - **`go nodes N`**: Search with N maximum playouts
 - **`go depth D`**: Unsupported (logs non-fatal warning)
 - **`bestmove`**: Returns the selected move in UCI format
+
+Note: A small internal movetime buffer may be applied to stabilize PV near deadlines.
 
 ### Usage Examples
 ```bash

@@ -131,15 +131,25 @@ class Evaluation:
         # Apply style weights
         style_weights = self.style_weights or {}
         total = 0.0
+        weighted_contributions: Dict[str, float] = {}
+
+        # logging - term-by-term with contributions
+        self._log_buffer.clear()
+        self._log("=== Evaluation Trace ===")
         for term, value in breakdown.items():
             weight = style_weights.get(term, 1.0)
-            total += value * weight
+            contribution = value * weight
+            weighted_contributions[term] = contribution
+            total += contribution
+            self._log(
+                f"  {term}: raw={value:.2f}, weight={weight:.2f}, contribution={contribution:.2f}"
+            )
 
-        # logging
-        self._log_buffer.clear()
-        self._log(f"Evaluation terms: {breakdown}")
         self._log(f"Applied style weights: {style_weights}")
-        self._log(f"Total score (cp): {total}")
+        self._log(f"Total score (cp): {total:.2f}")
+        self._log(
+            f"Verification: sum of contributions = {sum(weighted_contributions.values()):.2f}"
+        )
 
         return EvaluationResult(total=total, breakdown=breakdown, style_applied=style_weights)
 

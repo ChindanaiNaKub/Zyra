@@ -5,13 +5,23 @@ running analysis, and interactive gameplay.
 """
 
 import argparse
+import random
 from typing import Dict, List, Optional
 
 from core.board import Board
 from core.moves import generate_moves, make_move, parse_uci_move, perft, unmake_move
 from eval.heuristics import create_evaluator, parse_style_config
 from interfaces.uci import UCIEngine
+from performance.metrics import create_run_metadata
 from search.mcts import MCTSSearch, heuristic_move_ordering
+
+
+def print_run_metadata(seed: Optional[int], style_profile: Optional[str] = None) -> None:
+    """Print reproducibility metadata block at startup."""
+    metadata = create_run_metadata(seed=seed, style_profile=style_profile)
+    print("=== Run Metadata ===")
+    print(metadata.to_json())
+    print("===================")
 
 
 def run_perft_test(depth: int, fen: Optional[str] = None) -> None:
@@ -190,6 +200,7 @@ def run_stability(
 def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Zyra Chess Engine CLI")
+    parser.add_argument("--seed", type=int, help="Random seed for reproducibility")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Perft command
@@ -237,6 +248,11 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    # Initialize seed if provided
+    if args.seed is not None:
+        random.seed(args.seed)
+        print_run_metadata(args.seed)
+
     if args.command == "perft":
         run_perft_test(args.depth, args.fen)
     elif args.command == "analyze":
@@ -248,7 +264,11 @@ def main() -> None:
             args.fen, getattr(args, "movetime", None), getattr(args, "nodes", None), args.max_plies
         )
     elif args.command == "profile-style":
-        run_profile_style(args.fen, getattr(args, "profile", None))
+        profile_name = getattr(args, "profile", None)
+        if args.seed is not None and profile_name:
+            # Re-print with profile context
+            print_run_metadata(args.seed, profile_name)
+        run_profile_style(args.fen, profile_name)
     elif args.command == "stability":
         run_stability(
             games=getattr(args, "games", 10),

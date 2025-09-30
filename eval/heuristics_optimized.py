@@ -193,11 +193,13 @@ class OptimizedEvaluation:
         style_weights: Optional[Dict[str, float]] = None,
         enable_caching: bool = True,
         enable_fast_paths: bool = True,
+        logger: Optional[Callable[[str], None]] = None,
     ) -> None:
         """Initialize optimized evaluator."""
         self.style_weights = style_weights or {}
         self.enable_caching = enable_caching
         self.enable_fast_paths = enable_fast_paths
+        self._logger = logger
 
         # Profiling context (required by @profile_method decorator)
         self.context = ProfilerContext()
@@ -210,6 +212,18 @@ class OptimizedEvaluation:
         self._evaluation_cache: Dict[str, OptimizedEvaluationResult] = {}
         self._cache_hits = 0
         self._cache_misses = 0
+        self._log_buffer: List[str] = []
+
+    def _log(self, msg: str) -> None:
+        """Log a message to buffer and logger if available."""
+        if self._logger is not None:
+            try:
+                self._logger(msg)
+            except Exception:
+                pass
+        self._log_buffer.append(msg)
+        if len(self._log_buffer) > 100:
+            self._log_buffer.pop(0)
 
     @profile_method("optimized_evaluate")
     def evaluate(self, position: Any) -> float:
@@ -239,6 +253,16 @@ class OptimizedEvaluation:
         self._total_time += time.perf_counter() - start_time
 
         return result.total
+
+    def explain_evaluation(self, position: Any) -> Dict[str, Any]:
+        """Return breakdown of evaluation components and applied weights."""
+        result = self._evaluate_internal_optimized(position)
+        return {
+            "total": result.total,
+            "terms": result.breakdown,
+            "style_weights": result.style_applied,
+            "log": list(self._log_buffer),
+        }
 
     def _get_position_key(self, position: Any) -> str:
         """Get position key for caching."""
@@ -270,9 +294,25 @@ class OptimizedEvaluation:
 
         # Apply style weights
         total = 0.0
+        weighted_contributions: Dict[str, float] = {}
+
+        # logging - term-by-term with contributions
+        self._log_buffer.clear()
+        self._log("=== Evaluation Trace ===")
         for term, value in breakdown.items():
             weight = self.style_weights.get(term, 1.0)
-            total += value * weight
+            contribution = value * weight
+            weighted_contributions[term] = contribution
+            total += contribution
+            self._log(
+                f"  {term}: raw={value:.2f}, weight={weight:.2f}, contribution={contribution:.2f}"
+            )
+
+        self._log(f"Applied style weights: {self.style_weights}")
+        self._log(f"Total score (cp): {total:.2f}")
+        self._log(
+            f"Verification: sum of contributions = {sum(weighted_contributions.values()):.2f}"
+        )
 
         return OptimizedEvaluationResult(
             total=total, breakdown=breakdown, style_applied=self.style_weights
@@ -289,9 +329,25 @@ class OptimizedEvaluation:
 
     def _evaluate_starting_position(self) -> OptimizedEvaluationResult:
         """Fast evaluation for starting position."""
+        breakdown = {"material": 0.0, "center_control": 0.0, "mobility": 0.0, "king_safety": 0.0}
+
+        # logging - term-by-term with contributions
+        self._log_buffer.clear()
+        self._log("=== Evaluation Trace ===")
+        for term, value in breakdown.items():
+            weight = self.style_weights.get(term, 1.0)
+            contribution = value * weight
+            self._log(
+                f"  {term}: raw={value:.2f}, weight={weight:.2f}, contribution={contribution:.2f}"
+            )
+
+        self._log(f"Applied style weights: {self.style_weights}")
+        self._log(f"Total score (cp): 0.00")
+        self._log(f"Verification: sum of contributions = 0.00")
+
         return OptimizedEvaluationResult(
             total=0.0,
-            breakdown={"material": 0.0, "center_control": 0.0, "mobility": 0.0, "king_safety": 0.0},
+            breakdown=breakdown,
             style_applied=self.style_weights,
         )
 

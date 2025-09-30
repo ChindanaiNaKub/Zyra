@@ -4,6 +4,7 @@ This module provides infrastructure for collecting, storing, and analyzing
 performance metrics to validate performance targets.
 """
 
+import json
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -182,3 +183,42 @@ def time_operation(collector: MetricsCollector, operation: str):
             collector.current_metrics.move_generation_time_ms = duration_ms
         elif "move_val" in operation:
             collector.current_metrics.move_validation_time_ms = duration_ms
+
+
+@dataclass
+class RunMetadata:
+    """Reproducibility metadata for a run."""
+
+    seed: Optional[int] = None
+    style_profile: Optional[str] = None
+    config_snapshot: Dict[str, Any] = field(default_factory=dict)
+    timestamp: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert metadata to dictionary."""
+        return {
+            "seed": self.seed,
+            "style_profile": self.style_profile,
+            "config_snapshot": self.config_snapshot,
+            "timestamp": self.timestamp,
+        }
+
+    def to_json(self) -> str:
+        """Convert metadata to JSON string."""
+        return json.dumps(self.to_dict(), indent=2)
+
+
+def create_run_metadata(
+    seed: Optional[int] = None,
+    style_profile: Optional[str] = None,
+    config: Optional[Dict[str, Any]] = None,
+) -> RunMetadata:
+    """Create run metadata with timestamp."""
+    from datetime import datetime, timezone
+
+    return RunMetadata(
+        seed=seed,
+        style_profile=style_profile,
+        config_snapshot=config or {},
+        timestamp=datetime.now(timezone.utc).isoformat(),
+    )

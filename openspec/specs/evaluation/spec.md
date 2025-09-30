@@ -83,13 +83,14 @@ The system SHALL provide detailed logging of evaluation terms to enable understa
 - **WHEN** applying style profiles to evaluation
 - **THEN** the system logs which weights are applied and how they affect the final score
 
-#### Scenario: Move justification
-- **WHEN** the engine selects a move
-- **THEN** the system provides explainable reasoning based on evaluation term contributions
+#### Scenario: Term contributions sum matches total
+- **WHEN** an evaluation is computed during search
+- **THEN** the trace includes each term's raw value, weight, and weighted contribution
+- **AND** the sum of weighted contributions equals the final evaluation (within floating-point tolerance)
 
-#### Scenario: Style influence attribution
-- **WHEN** logging evaluation decisions
-- **THEN** the system clearly identifies which style weights influenced each evaluation term
+#### Scenario: Trace includes style profile context
+- **WHEN** a style profile is active (e.g., aggressive)
+- **THEN** the trace includes the profile name and the weights applied
 
 ### Requirement: Evaluation Integration with Search
 The system SHALL integrate evaluation signals with the search algorithm for style-aware move ordering and decision-making with measurable behavioral impact.

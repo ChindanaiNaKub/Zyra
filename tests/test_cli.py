@@ -207,6 +207,8 @@ class TestCLI:
         assert "perft" in result.stdout
         assert "analyze" in result.stdout
         assert "apply" in result.stdout
+        assert "play" in result.stdout
+        assert "profile-style" in result.stdout
 
     def test_cli_no_command(self) -> None:
         """Test CLI with no command specified."""
@@ -280,3 +282,38 @@ class TestCLI:
         assert result.returncode == 0
         assert "Position:" in result.stdout
         assert "Legal moves: 0" in result.stdout
+
+    def test_cli_play_command(self) -> None:
+        """Test CLI play command plays some plies and outputs moves."""
+        result = subprocess.run(
+            ["python", "-m", "cli.runner", "play", "--max-plies", "2"],
+            capture_output=True,
+            text=True,
+            cwd="/home/prab/Zyra",
+        )
+
+        assert result.returncode == 0
+        assert "Played plies:" in result.stdout
+        assert "Final position:" in result.stdout
+
+    def test_cli_profile_style_command(self) -> None:
+        """Test CLI profile-style command with aggressive profile."""
+        fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        result = subprocess.run(
+            [
+                "python",
+                "-m",
+                "cli.runner",
+                "profile-style",
+                fen,
+                "--profile",
+                "aggressive",
+            ],
+            capture_output=True,
+            text=True,
+            cwd="/home/prab/Zyra",
+        )
+
+        assert result.returncode == 0
+        assert "Style profile:" in result.stdout
+        assert "Total (cp):" in result.stdout

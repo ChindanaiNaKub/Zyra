@@ -1,1 +1,6 @@
-openspec
+cli
+core
+eval
+interfaces
+search
+zyra

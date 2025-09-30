@@ -164,3 +164,13 @@ class UCIEngine:
         rank_idx_from_top = (index >> 4) & 0x7
         files = "abcdefgh"
         return f"{files[file_idx]}{8 - rank_idx_from_top}"
+
+
+def main() -> None:
+    """Entrypoint for running the engine in UCI mode."""
+    engine = UCIEngine()
+    engine.run_uci_loop()
+
+
+if __name__ == "__main__":
+    main()

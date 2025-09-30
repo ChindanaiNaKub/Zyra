@@ -5,10 +5,13 @@ running analysis, and interactive gameplay.
 """
 
 import argparse
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from core.board import Board
 from core.moves import generate_moves, make_move, parse_uci_move, perft, unmake_move
+from eval.heuristics import create_evaluator, parse_style_config
+from interfaces.uci import UCIEngine
+from search.mcts import MCTSSearch, heuristic_move_ordering
 
 
 def run_perft_test(depth: int, fen: Optional[str] = None) -> None:
@@ -76,6 +79,114 @@ def run_apply_moves(moves: List[str], fen: Optional[str]) -> None:
     print(_ascii_board(board))
 
 
+def run_play(
+    fen: Optional[str], movetime: Optional[int], nodes: Optional[int], max_plies: int
+) -> None:
+    """Play a self-play game for a limited number of plies.
+
+    - Uses MCTS when movetime or nodes is provided; otherwise plays random legal moves.
+    - Prints each move in UCI along with side to move and a simple board snapshot at the end.
+    """
+    board = Board()
+    if fen:
+        board.load_fen(fen)
+    else:
+        board.set_startpos()
+
+    engine = UCIEngine()
+    engine.position = board
+
+    played: List[str] = []
+    for ply in range(max_plies):
+        legal = generate_moves(engine.position)
+        if not legal:
+            break
+        if movetime is None and nodes is None:
+            # Fallback: random move via UCIEngine's go handler without params
+            best = engine._handle_go_command([])
+        else:
+            args: List[str] = []
+            if movetime is not None:
+                args += ["movetime", str(movetime)]
+            if nodes is not None:
+                args += ["nodes", str(nodes)]
+            best = engine._handle_go_command(args)
+        if not best or not best.startswith("bestmove "):
+            break
+        uci = best.split()[1]
+        # Apply
+        try:
+            mv = parse_uci_move(engine.position, uci)
+            legal = generate_moves(engine.position)
+            ok = False
+            for lm in legal:
+                if (
+                    lm.from_square == mv.from_square
+                    and lm.to_square == mv.to_square
+                    and lm.promotion == mv.promotion
+                ):
+                    make_move(engine.position, mv)
+                    ok = True
+                    break
+            if not ok:
+                print(f"info string Skipping illegal selected move {uci}")
+                break
+            played.append(uci)
+        except Exception as ex:
+            print(f"info string Failed to apply move {uci}: {ex}")
+            break
+
+    print(f"Played plies: {len(played)}")
+    if played:
+        print("Moves:", " ".join(played))
+    print("Final position:")
+    print(_ascii_board(engine.position))
+
+
+def run_profile_style(fen: str, profile: Optional[str]) -> None:
+    """Print style weight impacts for a given position and profile name.
+
+    Shows evaluation term values, applied weights, and total.
+    """
+    board = Board()
+    board.load_fen(fen)
+    weights: Dict[str, float] = parse_style_config(profile) if profile else {}
+    evaluator = create_evaluator(weights)
+    result = evaluator.explain_evaluation(board)
+    print("Style profile:", profile or "<default>")
+    print("Terms:")
+    for k, v in result["terms"].items():
+        w = result["style_weights"].get(k, 1.0)
+        print(f"  {k}: {v:.2f} x {w:.2f} = {v * w:.2f}")
+    print(f"Total (cp): {result['total']:.2f}")
+
+
+def run_stability(
+    games: int,
+    max_plies: int,
+    movetime: Optional[int],
+    nodes: Optional[int],
+    fen: Optional[str],
+    verbose: bool,
+) -> None:
+    """Run multiple short self-play games to check stability and crash resistance.
+
+    Prints a summary of completed games. Any exception within a game loop will
+    be surfaced as output and abort further games.
+    """
+    completed = 0
+    for g in range(1, games + 1):
+        if verbose:
+            print(f"info string Starting stability game {g}/{games}")
+        try:
+            run_play(fen, movetime, nodes, max_plies)
+            completed += 1
+        except Exception as ex:
+            print(f"info string Stability run aborted on game {g}: {ex}")
+            break
+    print(f"Stability: completed {completed}/{games} games")
+
+
 def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Zyra Chess Engine CLI")
@@ -95,6 +206,35 @@ def main() -> None:
     apply_parser.add_argument("moves", nargs="+", help="Sequence of UCI moves, e.g., e2e4 e7e5")
     apply_parser.add_argument("--fen", help="Starting position in FEN (default startpos)")
 
+    # Play command
+    play_parser = subparsers.add_parser("play", help="Self-play a short game")
+    play_parser.add_argument("--fen", help="Starting position in FEN (default startpos)")
+    play_parser.add_argument("--movetime", type=int, help="Move time in ms (per move)")
+    play_parser.add_argument("--nodes", type=int, help="Max nodes per move")
+    play_parser.add_argument(
+        "--max-plies", type=int, default=10, help="Maximum number of plies to play"
+    )
+
+    # Profile style command
+    ps_parser = subparsers.add_parser("profile-style", help="Report style weight impacts")
+    ps_parser.add_argument("fen", help="Position in FEN notation")
+    ps_parser.add_argument(
+        "--profile", help="Style profile name (aggressive, defensive, experimental)"
+    )
+
+    # Stability command
+    stab_parser = subparsers.add_parser(
+        "stability", help="Run multiple short self-play games to check stability"
+    )
+    stab_parser.add_argument("--games", type=int, default=10, help="Number of games to run")
+    stab_parser.add_argument(
+        "--max-plies", type=int, default=40, help="Maximum plies per game (short runs recommended)"
+    )
+    stab_parser.add_argument("--movetime", type=int, help="Move time in ms (per move)")
+    stab_parser.add_argument("--nodes", type=int, help="Max nodes per move")
+    stab_parser.add_argument("--fen", help="Starting FEN; default startpos")
+    stab_parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+
     args = parser.parse_args()
 
     if args.command == "perft":
@@ -103,6 +243,21 @@ def main() -> None:
         run_analysis(args.fen)
     elif args.command == "apply":
         run_apply_moves(args.moves, args.fen)
+    elif args.command == "play":
+        run_play(
+            args.fen, getattr(args, "movetime", None), getattr(args, "nodes", None), args.max_plies
+        )
+    elif args.command == "profile-style":
+        run_profile_style(args.fen, getattr(args, "profile", None))
+    elif args.command == "stability":
+        run_stability(
+            games=getattr(args, "games", 10),
+            max_plies=getattr(args, "max_plies", 40),
+            movetime=getattr(args, "movetime", None),
+            nodes=getattr(args, "nodes", None),
+            fen=getattr(args, "fen", None),
+            verbose=getattr(args, "verbose", False),
+        )
     else:
         parser.print_help()
 

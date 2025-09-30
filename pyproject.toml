@@ -23,6 +23,27 @@ classifiers = [
 
 dependencies = []
 
+[project.scripts]
+zyra = "zyra.cli.runner:main"
+zyra-uci = "zyra.interfaces.uci:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = [
+    "cli*",
+    "core*",
+    "eval*",
+    "interfaces*",
+    "search*",
+    "zyra*",
+]
+exclude = [
+    "tests*",
+    "openspec*",
+]
+
 [project.optional-dependencies]
 dev = [
     "black>=23.0.0",

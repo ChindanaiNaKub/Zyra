@@ -42,18 +42,27 @@ Zyra is designed for developers and chess players seeking novelty and insight ra
 Run Zyra as a UCI engine for use with chess GUIs:
 
 ```bash
+# Via module (development)
 python -m zyra.interfaces.uci
+
+# After install (console script)
+zyra-uci
 ```
 
 #### CLI Tools
 Use the command-line interface for testing and analysis:
 
 ```bash
-# Run perft test for move generation validation
+# Via module (development)
+python -m zyra.cli.runner --help
 python -m zyra.cli.runner perft 4
-
-# Analyze a position
 python -m zyra.cli.runner analyze "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+# After install (console script)
+zyra --help
+zyra perft 4
+zyra analyze "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+zyra stability --games 20 --max-plies 60 --movetime 50
 ```
 
 ## Development
@@ -171,7 +180,7 @@ Zyra uses Monte Carlo Tree Search (MCTS) as its primary search algorithm with th
 ### Usage Examples
 ```bash
 # UCI mode with time control
-echo "go movetime 1000" | python -m zyra.interfaces.uci
+echo "go movetime 1000" | zyra-uci
 
 # Programmatic search
 from search.mcts import MCTSSearch
@@ -182,6 +191,37 @@ board.set_startpos()
 search = MCTSSearch(max_playouts=1000, seed=42)
 best_move = search.search(board)
 ```
+
+## Cross-Platform Notes
+
+- **Linux**: Python 3.11+ recommended. Use `pipx` or virtualenv for isolation. Console scripts `zyra` and `zyra-uci` are installed into your environment's bin.
+- **macOS**: Install Python via Homebrew (`brew install python@3.11`). Use a venv or `pipx`. Grant terminal input access for GUIs if piping commands.
+- **Windows**: Use Python 3.11 from Microsoft Store or python.org. Prefer `py -m venv .venv` then `pip install -e .`. Console scripts are available via `zyra.exe` and `zyra-uci.exe` on PATH.
+
+## Publishing
+
+1. Bump the version in `pyproject.toml`.
+2. Build distributions:
+   ```bash
+   python -m build
+   ```
+3. Upload to PyPI (requires `twine`):
+   ```bash
+   twine upload dist/*
+   ```
+4. Verify installation in a clean environment:
+   ```bash
+   pipx install zyra
+   zyra --help
+   zyra-uci
+   ```
+
+## UCI Conformance Validation
+
+- Start the engine: `zyra-uci`
+- In GUIs like Cute Chess or Arena, add a new UCI engine and point to `zyra-uci` (or `python -m zyra.interfaces.uci`).
+- Validate commands: `uci`, `isready`, `ucinewgame`, `position startpos|fen`, `go movetime|nodes`, `stop`, `quit`.
+- Known behavior: `go depth` is not supported; engine logs an informational message and continues.
 
 ## Roadmap
 

@@ -32,8 +32,8 @@ class UCIEngine:
         cmd = parts[0].lower()
 
         if cmd == "uci":
-            # Minimal identity; can be expanded with 'id name' and 'id author'
-            return "uciok"
+            # Provide proper UCI identification and acknowledge
+            return "id name Zyra\nid author Zyra Project\nuciok"
         elif cmd == "isready":
             return "readyok"
         elif cmd == "ucinewgame":
@@ -61,9 +61,17 @@ class UCIEngine:
                 command = input().strip()
                 response = self.handle_command(command)
                 if response:
-                    print(response)
+                    # Always flush so GUIs receive responses immediately
+                    print(response, flush=True)
             except EOFError:
                 break
+            except Exception as e:
+                # Log errors to GUI and continue
+                print(f"info string Error: {type(e).__name__}: {e}", flush=True)
+                # For debugging - also write to stderr
+                import traceback
+
+                traceback.print_exc(file=sys.stderr)
 
     # ---------------- internal helpers ----------------
     def _handle_position(self, args: List[str]) -> None:
@@ -103,10 +111,14 @@ class UCIEngine:
             return
 
     def _handle_go_command(self, args: List[str]) -> str:
-        """Handle UCI go command with movetime and nodes parameters."""
+        """Handle UCI go command with time controls, movetime, and nodes parameters."""
         movetime_ms = None
         max_nodes = None
         seed = None
+        wtime = None
+        btime = None
+        winc = 0
+        binc = 0
 
         # Parse parameters
         i = 0
@@ -117,14 +129,37 @@ class UCIEngine:
             elif args[i] == "nodes" and i + 1 < len(args):
                 max_nodes = int(args[i + 1])
                 i += 2
+            elif args[i] == "wtime" and i + 1 < len(args):
+                wtime = int(args[i + 1])
+                i += 2
+            elif args[i] == "btime" and i + 1 < len(args):
+                btime = int(args[i + 1])
+                i += 2
+            elif args[i] == "winc" and i + 1 < len(args):
+                winc = int(args[i + 1])
+                i += 2
+            elif args[i] == "binc" and i + 1 < len(args):
+                binc = int(args[i + 1])
+                i += 2
             elif args[i] == "depth" and i + 1 < len(args):
                 # Unsupported depth flag - log non-fatal note
                 print(
-                    f"info string Unsupported depth parameter {args[i + 1]}, using default behavior"
+                    f"info string Unsupported depth parameter {args[i + 1]}, using default behavior",
+                    flush=True,
                 )
                 i += 2
             else:
                 i += 1
+
+        # Calculate move time from clock time if not specified directly
+        if movetime_ms is None and (wtime is not None or btime is not None):
+            # Use our remaining time (based on side to move)
+            # Note: side_to_move is 'w' or 'b', not 0 or 1
+            our_time = wtime if self.position.side_to_move == "w" else btime
+            if our_time is not None:
+                # Simple time management: use 1/30th of remaining time + increment
+                our_inc = winc if self.position.side_to_move == "w" else binc
+                movetime_ms = max(100, (our_time // 30) + (our_inc // 2))
 
         # Get legal moves first
         legal_moves = generate_moves(self.position)

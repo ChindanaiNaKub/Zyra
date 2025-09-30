@@ -7,10 +7,19 @@ running analysis, and interactive gameplay.
 import argparse
 import datetime
 import random
-from typing import Dict, List, Optional, Tuple
+import sys
+import time
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from core.board import Board
-from core.moves import generate_moves, make_move, parse_uci_move, perft, unmake_move
+from core.moves import (
+    generate_moves,
+    get_game_result,
+    make_move,
+    parse_uci_move,
+    perft,
+    unmake_move,
+)
 from eval.heuristics import create_evaluator, parse_style_config
 from interfaces.uci import UCIEngine
 from performance.metrics import create_run_metadata
@@ -87,6 +96,124 @@ def _ascii_board(board: Board) -> str:
     # Add a simple footer with side to move
     lines.append(f"STM: {board.side_to_move}")
     return "\n".join(lines)
+
+
+# ---------------- Terminal Unicode Board Rendering & Animation ----------------
+_UNICODE_PIECES: Dict[str, str] = {
+    "P": "♙",
+    "N": "♘",
+    "B": "♗",
+    "R": "♖",
+    "Q": "♕",
+    "K": "♔",
+    "p": "♟",
+    "n": "♞",
+    "b": "♝",
+    "r": "♜",
+    "q": "♛",
+    "k": "♚",
+}
+
+
+def _index_to_coords(index: int) -> Tuple[int, int]:
+    """Return (file_idx 0..7, rank_idx_from_top 0..7) for 0x88 index."""
+    return (index & 0x7), ((index >> 4) & 0x7)
+
+
+def _render_unicode_board(
+    board: Board,
+    *,
+    highlight: Optional[Iterable[int]] = None,
+    overlay_piece: Optional[str] = None,
+    overlay_pos: Optional[Tuple[int, int]] = None,
+) -> str:
+    """Render a unicode board with optional highlighted squares and an overlay piece at a temp position.
+
+    - highlight: iterable of 0x88 indices to visually mark (origin/destination)
+    - overlay_piece: a single-letter piece like 'P' or 'q' to draw temporarily
+    - overlay_pos: (file_idx, rank_idx_from_top) for overlay_piece
+    """
+    highlight_set = set(highlight or [])
+
+    def glyph_at(file_idx: int, rank_idx_from_top: int) -> str:
+        idx = (rank_idx_from_top << 4) | file_idx
+        if overlay_piece and overlay_pos and overlay_pos == (file_idx, rank_idx_from_top):
+            return _UNICODE_PIECES.get(overlay_piece, overlay_piece)
+        p = board.squares[idx]
+        if p == "\u0000":
+            return "·"
+        return _UNICODE_PIECES.get(p, p)
+
+    parts: List[str] = []
+    # Header
+    parts.append("  a b c d e f g h")
+    for rank_idx_from_top in range(8):
+        row_cells: List[str] = []
+        for file_idx in range(8):
+            idx = (rank_idx_from_top << 4) | file_idx
+            cell = glyph_at(file_idx, rank_idx_from_top)
+            is_high = idx in highlight_set
+            if is_high:
+                # Invert colors for highlights
+                row_cells.append(f"\033[7m{cell}\033[0m")
+            else:
+                row_cells.append(cell)
+        # Rank label on left and right
+        rank_label = str(8 - rank_idx_from_top)
+        parts.append(f"{rank_label} " + " ".join(row_cells) + f" {rank_label}")
+    parts.append("  a b c d e f g h")
+    parts.append(f"STM: {board.side_to_move}")
+    return "\n".join(parts)
+
+
+def _clear_and_print(s: str) -> None:
+    sys.stdout.write("\033[2J\033[H")  # clear screen & move cursor home
+    sys.stdout.write(s)
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
+def _animate_move(
+    board: Board,
+    from_sq: int,
+    to_sq: int,
+    *,
+    delay_ms: int,
+) -> None:
+    """Animate a move from from_sq to to_sq using simple interpolation and highlights.
+
+    We do not mutate the board during animation; we draw a temporary overlay piece
+    moving along a straight line from origin to destination, then caller can apply
+    the move and we'll render the final board.
+    """
+    from_file, from_rank = _index_to_coords(from_sq)
+    to_file, to_rank = _index_to_coords(to_sq)
+    piece = board.squares[from_sq]
+    if piece == "\u0000":
+        # Nothing to animate
+        return
+
+    frames = max(abs(to_file - from_file), abs(to_rank - from_rank)) or 1
+    step_f = (to_file - from_file) / frames
+    step_r = (to_rank - from_rank) / frames
+
+    # Initial frame with highlights
+    _clear_and_print(_render_unicode_board(board, highlight=[from_sq, to_sq]))
+    time.sleep(max(0.0, delay_ms / 1000.0))
+
+    # Move overlay across frames
+    for i in range(1, frames + 1):
+        cur_f = int(round(from_file + step_f * i))
+        cur_r = int(round(from_rank + step_r * i))
+        _clear_and_print(
+            _render_unicode_board(
+                board,
+                highlight=[from_sq, to_sq],
+                overlay_piece=piece,
+                overlay_pos=(cur_f, cur_r),
+            )
+        )
+        time.sleep(max(0.0, delay_ms / 1000.0))
 
 
 def _move_to_san(board: Board, move) -> str:
@@ -401,6 +528,166 @@ def run_stability(
     print(f"Stability: completed {completed}/{games} games")
 
 
+def run_selfplay_until_end(
+    fen: Optional[str],
+    movetime: Optional[int],
+    nodes: Optional[int],
+    max_plies_safety: int,
+    export_pgn: Optional[str] = None,
+    seed: Optional[int] = None,
+    style: Optional[str] = None,
+    *,
+    animate: bool = False,
+    anim_delay: int = 60,
+) -> None:
+    """Run a full self-play game until termination (checkmate/stalemate/draw).
+
+    Uses the same UCIEngine internal go handler to choose moves with either movetime
+    or nodes per move. Falls back to random if neither is provided.
+    """
+    board = Board()
+    starting_fen = fen
+    if fen:
+        board.load_fen(fen)
+    else:
+        board.set_startpos()
+
+    engine = UCIEngine()
+    engine.position = board
+
+    # For PGN export, track moves with evaluations
+    moves_with_eval: List[Tuple[str, Dict]] = []
+    evaluator = None
+    if export_pgn:
+        weights = parse_style_config(style) if style else {}
+        evaluator = create_evaluator(weights)
+
+    played: List[str] = []
+    position_history: List[str] = []
+    move_lines: List[str] = []  # Human-readable SAN lines appended per ply
+
+    ply = 0
+    # Initial draw
+    if animate:
+        _clear_and_print(_render_unicode_board(engine.position))
+
+    while ply < max_plies_safety:
+        # Check game end
+        position_history.append(engine.position.to_fen())
+        result = get_game_result(engine.position, position_history)
+        if result != "ongoing":
+            print(f"Game ended by: {result}")
+            break
+
+        legal = generate_moves(engine.position)
+        if not legal:
+            print("No legal moves; game over.")
+            break
+
+        # Think
+        if movetime is None and nodes is None:
+            best = engine._handle_go_command([])
+        else:
+            args: List[str] = []
+            if movetime is not None:
+                args += ["movetime", str(movetime)]
+            if nodes is not None:
+                args += ["nodes", str(nodes)]
+            best = engine._handle_go_command(args)
+
+        if not best or not best.startswith("bestmove "):
+            print(f"No bestmove returned (response: {best!r}); aborting.")
+            break
+
+        uci = best.split()[1]
+
+        # Capture evaluation before making the move
+        eval_dict = None
+        if evaluator:
+            eval_dict = evaluator.explain_evaluation(engine.position)
+
+        # Apply move if legal
+        try:
+            mv = parse_uci_move(engine.position, uci)
+            # Compute SAN before applying the move for correct capture display
+            try:
+                san_text = _move_to_san(engine.position, mv)
+            except Exception:
+                san_text = uci
+            legal_now = generate_moves(engine.position)
+            ok = False
+            for lm in legal_now:
+                if (
+                    lm.from_square == mv.from_square
+                    and lm.to_square == mv.to_square
+                    and lm.promotion == mv.promotion
+                ):
+                    # Animate piece travel before mutating board
+                    if animate:
+                        _animate_move(
+                            engine.position,
+                            mv.from_square,
+                            mv.to_square,
+                            delay_ms=anim_delay,
+                        )
+                    make_move(engine.position, mv)
+                    ok = True
+                    break
+            if not ok:
+                print(f"info string Engine chose illegal move {uci}; aborting.")
+                break
+            played.append(uci)
+
+            # Append SAN move line
+            move_num = (ply // 2) + 1
+            if ply % 2 == 0:
+                move_lines.append(f"{move_num}. {san_text}")
+            else:
+                move_lines.append(f"{move_num}... {san_text}")
+
+            # Output move line incrementally when not animating
+            if not animate:
+                print(move_lines[-1])
+
+            if animate:
+                # Render resulting position with updated move list
+                board_view = _render_unicode_board(engine.position, highlight=[mv.to_square])
+                moves_view = "Moves:\n" + "\n".join(move_lines)
+                _clear_and_print(board_view + "\n\n" + moves_view)
+                time.sleep(max(0.0, anim_delay / 1000.0))
+            if export_pgn:
+                moves_with_eval.append((uci, eval_dict))
+        except Exception as ex:
+            print(f"info string Failed to apply move {uci}: {ex}")
+            break
+
+        ply += 1
+
+    print(f"Played plies: {len(played)}")
+    if played:
+        print("Moves:", " ".join(played))
+    print("Final position:")
+    if animate:
+        final_board = _render_unicode_board(engine.position)
+        moves_view = ("Moves:\n" + "\n".join(move_lines)) if move_lines else ""
+        _clear_and_print(final_board + ("\n\n" + moves_view if moves_view else ""))
+    else:
+        print(_ascii_board(engine.position))
+        if move_lines:
+            print("\nMoves:")
+            for line in move_lines:
+                print(line)
+
+    if export_pgn and moves_with_eval:
+        export_game_pgn(
+            moves_with_eval,
+            export_pgn,
+            seed=seed,
+            style_profile=style,
+            starting_fen=starting_fen,
+        )
+
+
 def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Zyra Chess Engine CLI")
@@ -454,6 +741,31 @@ def main() -> None:
     stab_parser.add_argument("--fen", help="Starting FEN; default startpos")
     stab_parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
 
+    # Selfplay-until-end command
+    sp_parser = subparsers.add_parser(
+        "selfplay", help="Run a full self-play game until checkmate/stalemate/draw"
+    )
+    sp_parser.add_argument("--fen", help="Starting position in FEN (default startpos)")
+    sp_parser.add_argument("--movetime", type=int, default=1000, help="Move time in ms (per move)")
+    sp_parser.add_argument("--nodes", type=int, help="Max nodes per move")
+    sp_parser.add_argument(
+        "--max-plies-safety",
+        type=int,
+        default=400,
+        help="Safety cap on total plies to avoid infinite games",
+    )
+    sp_parser.add_argument("--export-pgn", help="Export game to PGN file with annotations")
+    sp_parser.add_argument("--style", help="Style profile for evaluation in PGN annotations")
+    sp_parser.add_argument(
+        "--animate", action="store_true", help="Animate moves on a 2D unicode board"
+    )
+    sp_parser.add_argument(
+        "--anim-delay",
+        type=int,
+        default=60,
+        help="Animation frame delay in ms (also pause between frames)",
+    )
+
     args = parser.parse_args()
 
     # Initialize seed if provided
@@ -496,6 +808,18 @@ def main() -> None:
             nodes=getattr(args, "nodes", None),
             fen=getattr(args, "fen", None),
             verbose=getattr(args, "verbose", False),
+        )
+    elif args.command == "selfplay":
+        run_selfplay_until_end(
+            fen=getattr(args, "fen", None),
+            movetime=getattr(args, "movetime", 1000),
+            nodes=getattr(args, "nodes", None),
+            max_plies_safety=getattr(args, "max_plies_safety", 400),
+            export_pgn=getattr(args, "export_pgn", None),
+            seed=args.seed,
+            style=getattr(args, "style", None),
+            animate=getattr(args, "animate", False),
+            anim_delay=getattr(args, "anim_delay", 60),
         )
     else:
         parser.print_help()

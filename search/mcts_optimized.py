@@ -11,7 +11,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from core.board import Board
 from core.moves import Move, generate_moves, make_move, unmake_move
-from eval.heuristics import Evaluation, parse_style_config
+from eval.heuristics import parse_style_config
+from eval.heuristics_optimized import OptimizedEvaluation as Evaluation
 from performance.profiler import ProfilerContext, profile_function, profile_method
 
 
@@ -106,6 +107,7 @@ class OptimizedMCTSSearch:
         style: Optional[dict or str] = None,
         enable_caching: bool = True,
         enable_move_ordering: bool = True,
+        enable_tracing: bool = False,
     ) -> None:
         """Initialize optimized MCTS with performance features."""
         self.max_playouts = max_playouts
@@ -114,6 +116,7 @@ class OptimizedMCTSSearch:
         self.exploration_constant = 1.414
         self.enable_caching = enable_caching
         self.enable_move_ordering = enable_move_ordering
+        self.enable_tracing = enable_tracing
 
         # Profiling context (required by @profile_method decorator)
         self.context = ProfilerContext()
@@ -131,6 +134,9 @@ class OptimizedMCTSSearch:
 
         # Move ordering cache
         self._move_ordering_cache: Dict[str, List[Move]] = {}
+
+        # Search tracing (for visualization)
+        self._trace_data: Optional[Dict[str, Any]] = None
 
     @profile_method("mcts_search")
     def search(self, position: Board) -> Optional[Move]:
@@ -174,6 +180,10 @@ class OptimizedMCTSSearch:
 
             playouts += 1
             self._nodes_processed += 1
+
+        # Capture trace data if enabled
+        if self.enable_tracing:
+            self._capture_trace(root)
 
         # Return best move based on visit count
         if not root.children:
@@ -374,3 +384,85 @@ class OptimizedMCTSSearch:
             "cache_hits": len(self._move_ordering_cache),
             "target_met": nodes_per_second >= 10000,
         }
+
+    def get_trace_data(self) -> Optional[Dict[str, Any]]:
+        """Get captured trace data from last search (if tracing was enabled)."""
+        return self._trace_data
+
+    def _capture_trace(self, root: OptimizedMCTSNode, top_n: int = 10) -> None:
+        """Capture trace data from search tree for visualization."""
+        if not self.enable_tracing:
+            return
+
+        # Capture root node and top-N children by visits
+        sorted_children = sorted(root.children, key=lambda c: c.visits, reverse=True)[:top_n]
+
+        children_data = []
+        for child in sorted_children:
+            children_data.append(
+                {
+                    "move": self._move_to_uci(child.move) if child.move else None,
+                    "visits": child.visits,
+                    "value": child.value,
+                    "avg_value": child.value / child.visits if child.visits > 0 else 0.0,
+                    "ucb": child.get_ucb_score(self.exploration_constant),
+                }
+            )
+
+        self._trace_data = {
+            "root": {
+                "visits": root.visits,
+                "value": root.value,
+                "children_count": len(root.children),
+            },
+            "top_children": children_data,
+            "playouts": self._nodes_processed,
+        }
+
+    def _move_to_uci(self, move: Move) -> str:
+        """Convert move to UCI string."""
+        if move is None:
+            return ""
+
+        # Convert 0x88 indices to algebraic notation
+        from_file = move.from_square & 0x7
+        from_rank = move.from_square >> 4
+        to_file = move.to_square & 0x7
+        to_rank = move.to_square >> 4
+
+        uci = f"{'abcdefgh'[from_file]}{from_rank + 1}{'abcdefgh'[to_file]}{to_rank + 1}"
+
+        if move.promotion:
+            promo_char = move.promotion.lower()
+            uci += promo_char
+
+        return uci
+
+    def render_trace_text(self, max_depth: int = 3, max_width: int = 10) -> str:
+        """Render trace data as textual tree view."""
+        if not self._trace_data:
+            return "No trace data available (enable_tracing=False or no search performed)"
+
+        lines = []
+        lines.append("=== Search Tree Visualization ===")
+        lines.append(
+            f"Root: visits={self._trace_data['root']['visits']}, "
+            f"value={self._trace_data['root']['value']:.2f}, "
+            f"children={self._trace_data['root']['children_count']}"
+        )
+        lines.append(f"Playouts: {self._trace_data['playouts']}")
+        lines.append("")
+        lines.append("Top moves (by visits):")
+
+        for i, child in enumerate(self._trace_data["top_children"][:max_width], 1):
+            move_str = child["move"] or "???"
+            lines.append(
+                f"  {i}. {move_str:6s} | "
+                f"visits: {child['visits']:6d} | "
+                f"value: {child['value']:8.2f} | "
+                f"avg: {child['avg_value']:7.4f} | "
+                f"ucb: {child['ucb']:7.4f}"
+            )
+
+        lines.append("=" * 50)
+        return "\n".join(lines)

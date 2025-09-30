@@ -284,12 +284,16 @@ class OptimizedEvaluation:
         mobility_cp = self._score_mobility_optimized(position)
         king_safety_cp = self._score_king_safety_optimized(position)
 
+        # Opening principles heuristics (lightweight, no book dependency)
+        opening_cp = self._score_opening_principles(position)
+
         # Combine terms
         breakdown = {
             "material": float(material_cp),
             "center_control": float(center_cp),
             "mobility": float(mobility_cp),
             "king_safety": float(king_safety_cp),
+            "opening_principles": float(opening_cp),
         }
 
         # Apply style weights
@@ -329,7 +333,13 @@ class OptimizedEvaluation:
 
     def _evaluate_starting_position(self) -> OptimizedEvaluationResult:
         """Fast evaluation for starting position."""
-        breakdown = {"material": 0.0, "center_control": 0.0, "mobility": 0.0, "king_safety": 0.0}
+        breakdown = {
+            "material": 0.0,
+            "center_control": 0.0,
+            "mobility": 0.0,
+            "king_safety": 0.0,
+            "opening_principles": 0.0,
+        }
 
         # logging - term-by-term with contributions
         self._log_buffer.clear()
@@ -488,6 +498,124 @@ class OptimizedEvaluation:
                         safety += 5
 
         return safety
+
+    def _score_opening_principles(self, position: Any) -> int:
+        """Score opening phase heuristics (development, center, king safety triggers).
+
+        No large book dependency - uses position features only.
+        """
+        # Only apply opening principles in early game (first ~15 moves)
+        if not self._is_opening_phase(position):
+            return 0
+
+        score = 0
+
+        # 1. Development incentives: reward developed minor pieces
+        score += self._score_piece_development(position, white=True)
+        score -= self._score_piece_development(position, white=False)
+
+        # 2. Center control already handled by existing center_control term,
+        # so we don't duplicate it here
+
+        # 3. Early king safety: reward castling
+        score += self._score_castling_incentive(position, white=True)
+        score -= self._score_castling_incentive(position, white=False)
+
+        return score
+
+    def _is_opening_phase(self, position: Any) -> bool:
+        """Check if we're in the opening phase (simplified heuristic)."""
+        # Opening phase: move count < 15 OR most pieces still on board
+        if position.fullmove_number <= 15:
+            return True
+
+        # Alternative: count developed pieces
+        piece_count = sum(
+            1 for sq in position.squares if sq != "\u0000" and sq.lower() not in ["k", "p"]
+        )
+        # If most pieces still on board (> 10 minor/major pieces), still opening
+        return piece_count > 10
+
+    def _score_piece_development(self, position: Any, white: bool) -> int:
+        """Score piece development for one side."""
+        score = 0
+
+        # Starting squares for knights and bishops
+        if white:
+            knight_start_squares = [1, 6]  # b1, g1
+            bishop_start_squares = [2, 5]  # c1, f1
+            back_rank = 0
+        else:
+            knight_start_squares = [113, 118]  # b8, g8
+            bishop_start_squares = [114, 117]  # c8, f8
+            back_rank = 7
+
+        # Penalize pieces still on starting squares
+        for sq in knight_start_squares:
+            piece = position.squares[sq]
+            if piece != "\u0000":
+                expected = "N" if white else "n"
+                if piece == expected:
+                    score -= 5  # Penalty for undeveloped knight
+
+        for sq in bishop_start_squares:
+            piece = position.squares[sq]
+            if piece != "\u0000":
+                expected = "B" if white else "b"
+                if piece == expected:
+                    score -= 5  # Penalty for undeveloped bishop
+
+        # Reward knights and bishops away from back rank
+        for idx in range(128):
+            if _is_offboard_cached(idx):
+                continue
+
+            piece = position.squares[idx]
+            if piece == "\u0000":
+                continue
+
+            rank = _rank_of_cached(idx)
+
+            if white and _is_white_cached(piece):
+                if piece.lower() in ["n", "b"] and rank > back_rank:
+                    score += 3  # Reward developed piece
+            elif not white and not _is_white_cached(piece):
+                if piece.lower() in ["n", "b"] and rank < back_rank:
+                    score += 3  # Reward developed piece
+
+        return score
+
+    def _score_castling_incentive(self, position: Any, white: bool) -> int:
+        """Score castling incentives (reward castled positions)."""
+        score = 0
+
+        # Check if king has moved to typical castled position
+        if white:
+            # Kingside castle: g1 (6), Queenside: c1 (2)
+            king_sq = self._find_king(position, white=True)
+            if king_sq is not None:
+                file = _file_of_cached(king_sq)
+                rank = _rank_of_cached(king_sq)
+                # If king is on g1 or c1 (rank 0), likely castled
+                if rank == 0 and (file == 6 or file == 2):
+                    score += 15  # Reward castling
+                # If king is still on e1 (file 4, rank 0) after move 10, penalize
+                elif rank == 0 and file == 4 and position.fullmove_number > 10:
+                    score -= 10
+        else:
+            # Black: g8 or c8
+            king_sq = self._find_king(position, white=False)
+            if king_sq is not None:
+                file = _file_of_cached(king_sq)
+                rank = _rank_of_cached(king_sq)
+                # If king is on g8 or c8 (rank 7), likely castled
+                if rank == 7 and (file == 6 or file == 2):
+                    score += 15  # Reward castling
+                # If king is still on e8 after move 10, penalize
+                elif rank == 7 and file == 4 and position.fullmove_number > 10:
+                    score -= 10
+
+        return score
 
     def get_performance_stats(self) -> Dict[str, Any]:
         """Get performance statistics."""

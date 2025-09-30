@@ -5,8 +5,9 @@ running analysis, and interactive gameplay.
 """
 
 import argparse
+import datetime
 import random
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from core.board import Board
 from core.moves import generate_moves, make_move, parse_uci_move, perft, unmake_move
@@ -36,14 +37,42 @@ def run_perft_test(depth: int, fen: Optional[str] = None) -> None:
     print(f"Perft({depth}) = {count}")
 
 
-def run_analysis(position: str) -> None:
-    """Run position analysis with a simple board dump and legal moves."""
+def run_analysis(
+    position: str,
+    export_pgn: Optional[str] = None,
+    seed: Optional[int] = None,
+    style: Optional[str] = None,
+) -> None:
+    """Run position analysis with a simple board dump and legal moves.
+
+    Optionally export to PGN if export_pgn path is provided.
+    """
     board = Board()
     board.load_fen(position)
     print("Position:")
     print(_ascii_board(board))
     moves = generate_moves(board)
     print(f"Legal moves: {len(moves)}")
+
+    # If PGN export requested, analyze position and export
+    if export_pgn:
+        weights = parse_style_config(style) if style else {}
+        evaluator = create_evaluator(weights)
+
+        # Analyze current position
+        eval_result = evaluator.explain_evaluation(board)
+        print(f"\nEvaluation: {eval_result['total']:.2f}cp")
+
+        # For analysis mode, create a single-move "game" with current position eval
+        moves_with_eval = []
+        # Export just the position evaluation
+        export_game_pgn(
+            moves_with_eval,
+            export_pgn,
+            seed=seed,
+            style_profile=style,
+            starting_fen=position,
+        )
 
 
 def _ascii_board(board: Board) -> str:
@@ -58,6 +87,148 @@ def _ascii_board(board: Board) -> str:
     # Add a simple footer with side to move
     lines.append(f"STM: {board.side_to_move}")
     return "\n".join(lines)
+
+
+def _move_to_san(board: Board, move) -> str:
+    """Convert a move to SAN (Standard Algebraic Notation) - simplified version."""
+    # This is a simplified SAN converter for basic moves
+    from_file = move.from_square & 0x7
+    from_rank = move.from_square >> 4
+    to_file = move.to_square & 0x7
+    to_rank = move.to_square >> 4
+
+    piece = board.squares[move.from_square]
+    target = board.squares[move.to_square]
+
+    san = ""
+
+    # Piece notation (skip for pawns)
+    if piece.lower() != "p":
+        san += piece.upper()
+
+    # Capture notation
+    if target != "\u0000":
+        if piece.lower() == "p":
+            san += "abcdefgh"[from_file]
+        san += "x"
+
+    # Destination square
+    san += f"{'abcdefgh'[to_file]}{to_rank + 1}"
+
+    # Promotion
+    if move.promotion:
+        san += "=" + move.promotion.upper()
+
+    return san
+
+
+def export_game_pgn(
+    moves: List[Tuple[str, Dict[str, any]]],
+    output_path: str,
+    seed: Optional[int] = None,
+    style_profile: Optional[str] = None,
+    starting_fen: Optional[str] = None,
+) -> None:
+    """Export a game to PGN format with evaluation annotations.
+
+    Args:
+        moves: List of (uci_move, evaluation_dict) tuples
+        output_path: Path to write PGN file
+        seed: Random seed for reproducibility metadata
+        style_profile: Style profile name for metadata
+        starting_fen: Starting position (None for standard start)
+    """
+    pgn_lines = []
+
+    # PGN headers
+    pgn_lines.append('[Event "Zyra Engine Analysis"]')
+    pgn_lines.append(f'[Date "{datetime.datetime.now().strftime("%Y.%m.%d")}"]')
+    pgn_lines.append('[White "Zyra"]')
+    pgn_lines.append('[Black "Zyra"]')
+    pgn_lines.append('[Result "*"]')
+
+    # Add reproducibility metadata
+    if seed is not None:
+        pgn_lines.append(f'[Seed "{seed}"]')
+    if style_profile is not None:
+        pgn_lines.append(f'[StyleProfile "{style_profile}"]')
+    if starting_fen:
+        pgn_lines.append(f'[FEN "{starting_fen}"]')
+
+    pgn_lines.append("")
+
+    # Game moves with annotations
+    move_text = []
+    board = Board()
+    if starting_fen:
+        board.load_fen(starting_fen)
+    else:
+        board.set_startpos()
+
+    for i, (uci_move, eval_dict) in enumerate(moves):
+        move_num = (i // 2) + 1
+
+        # Add move number for white's moves
+        if i % 2 == 0:
+            move_text.append(f"{move_num}.")
+
+        # Parse and convert to SAN
+        try:
+            move = parse_uci_move(board, uci_move)
+            san = _move_to_san(board, move)
+            move_text.append(san)
+
+            # Add evaluation annotation as comment
+            if eval_dict:
+                comment = _format_eval_comment(eval_dict)
+                move_text.append(f"{{ {comment} }}")
+
+            # Apply move to board
+            make_move(board, move)
+        except Exception as ex:
+            # If parsing fails, just use UCI notation
+            move_text.append(uci_move)
+            move_text.append(f"{{ Error: {ex} }}")
+
+    # Format moves (wrap at reasonable line length)
+    current_line = ""
+    for token in move_text:
+        if len(current_line) + len(token) + 1 > 80:
+            pgn_lines.append(current_line)
+            current_line = token
+        else:
+            current_line += (" " + token) if current_line else token
+
+    if current_line:
+        pgn_lines.append(current_line)
+
+    pgn_lines.append("")
+    pgn_lines.append("*")
+
+    # Write to file
+    with open(output_path, "w") as f:
+        f.write("\n".join(pgn_lines))
+
+    print(f"PGN exported to: {output_path}")
+
+
+def _format_eval_comment(eval_dict: Dict[str, any]) -> str:
+    """Format evaluation dictionary into a concise PGN comment."""
+    parts = []
+
+    # Total score
+    if "total" in eval_dict:
+        parts.append(f"eval: {eval_dict['total']:.2f}cp")
+
+    # Key terms (limit to most important)
+    if "terms" in eval_dict:
+        terms = eval_dict["terms"]
+        key_terms = ["material", "center_control", "mobility", "king_safety", "opening_principles"]
+        for term in key_terms:
+            if term in terms and abs(terms[term]) > 1:  # Only show non-trivial values
+                parts.append(f"{term}: {terms[term]:.1f}")
+
+    return ", ".join(parts) if parts else "eval: N/A"
 
 
 def run_apply_moves(moves: List[str], fen: Optional[str]) -> None:
@@ -90,14 +261,22 @@ def run_apply_moves(moves: List[str], fen: Optional[str]) -> None:
 
 
 def run_play(
-    fen: Optional[str], movetime: Optional[int], nodes: Optional[int], max_plies: int
+    fen: Optional[str],
+    movetime: Optional[int],
+    nodes: Optional[int],
+    max_plies: int,
+    export_pgn: Optional[str] = None,
+    seed: Optional[int] = None,
+    style: Optional[str] = None,
 ) -> None:
     """Play a self-play game for a limited number of plies.
 
     - Uses MCTS when movetime or nodes is provided; otherwise plays random legal moves.
     - Prints each move in UCI along with side to move and a simple board snapshot at the end.
+    - Optionally exports game to PGN with annotations.
     """
     board = Board()
+    starting_fen = fen
     if fen:
         board.load_fen(fen)
     else:
@@ -105,6 +284,13 @@ def run_play(
 
     engine = UCIEngine()
     engine.position = board
+
+    # For PGN export, track moves with evaluations
+    moves_with_eval: List[Tuple[str, Dict]] = []
+    evaluator = None
+    if export_pgn:
+        weights = parse_style_config(style) if style else {}
+        evaluator = create_evaluator(weights)
 
     played: List[str] = []
     for ply in range(max_plies):
@@ -124,6 +310,12 @@ def run_play(
         if not best or not best.startswith("bestmove "):
             break
         uci = best.split()[1]
+
+        # Capture evaluation before making the move
+        eval_dict = None
+        if evaluator:
+            eval_dict = evaluator.explain_evaluation(engine.position)
+
         # Apply
         try:
             mv = parse_uci_move(engine.position, uci)
@@ -142,6 +334,8 @@ def run_play(
                 print(f"info string Skipping illegal selected move {uci}")
                 break
             played.append(uci)
+            if export_pgn:
+                moves_with_eval.append((uci, eval_dict))
         except Exception as ex:
             print(f"info string Failed to apply move {uci}: {ex}")
             break
@@ -151,6 +345,16 @@ def run_play(
         print("Moves:", " ".join(played))
     print("Final position:")
     print(_ascii_board(engine.position))
+
+    # Export PGN if requested
+    if export_pgn and moves_with_eval:
+        export_game_pgn(
+            moves_with_eval,
+            export_pgn,
+            seed=seed,
+            style_profile=style,
+            starting_fen=starting_fen,
+        )
 
 
 def run_profile_style(fen: str, profile: Optional[str]) -> None:
@@ -211,6 +415,8 @@ def main() -> None:
     # Analysis command
     analysis_parser = subparsers.add_parser("analyze", help="Analyze position")
     analysis_parser.add_argument("fen", help="Position in FEN notation")
+    analysis_parser.add_argument("--export-pgn", help="Export analysis to PGN file")
+    analysis_parser.add_argument("--style", help="Style profile for evaluation")
 
     # Apply moves command
     apply_parser = subparsers.add_parser("apply", help="Apply UCI moves and print board")
@@ -225,6 +431,8 @@ def main() -> None:
     play_parser.add_argument(
         "--max-plies", type=int, default=10, help="Maximum number of plies to play"
     )
+    play_parser.add_argument("--export-pgn", help="Export game to PGN file with annotations")
+    play_parser.add_argument("--style", help="Style profile for evaluation in PGN annotations")
 
     # Profile style command
     ps_parser = subparsers.add_parser("profile-style", help="Report style weight impacts")
@@ -256,12 +464,23 @@ def main() -> None:
     if args.command == "perft":
         run_perft_test(args.depth, args.fen)
     elif args.command == "analyze":
-        run_analysis(args.fen)
+        run_analysis(
+            args.fen,
+            export_pgn=getattr(args, "export_pgn", None),
+            seed=args.seed,
+            style=getattr(args, "style", None),
+        )
     elif args.command == "apply":
         run_apply_moves(args.moves, args.fen)
     elif args.command == "play":
         run_play(
-            args.fen, getattr(args, "movetime", None), getattr(args, "nodes", None), args.max_plies
+            args.fen,
+            getattr(args, "movetime", None),
+            getattr(args, "nodes", None),
+            args.max_plies,
+            export_pgn=getattr(args, "export_pgn", None),
+            seed=args.seed,
+            style=getattr(args, "style", None),
         )
     elif args.command == "profile-style":
         profile_name = getattr(args, "profile", None)

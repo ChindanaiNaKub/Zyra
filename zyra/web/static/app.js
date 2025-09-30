@@ -111,6 +111,7 @@ async function drawBoard(state){
       const isWhite = p === p.toUpperCase();
       span.className = 'piece ' + (isWhite ? 'white' : 'black');
       span.textContent = PIECE_TO_SYMBOL[p] || p;
+      span.draggable = true;
       sq.appendChild(span);
     }
   }
@@ -151,6 +152,61 @@ async function drawBoard(state){
         }
         fromSq = null;
       }
+    };
+
+    // Drag and drop handlers
+    sq.ondragover = (e) => {
+      e.preventDefault(); // Allow drop
+      if (legalTargets.includes(sq.dataset.square)) {
+        sq.classList.add('drag-over');
+      }
+    };
+
+    sq.ondragleave = () => {
+      sq.classList.remove('drag-over');
+    };
+
+    sq.ondrop = async (e) => {
+      e.preventDefault();
+      sq.classList.remove('drag-over');
+
+      const fromSq = e.dataTransfer.getData('text/plain');
+      const toSq = sq.dataset.square;
+
+      if (fromSq && toSq && fromSq !== toSq) {
+        const uci = fromSq + toSq;
+        try {
+          const ns = await api.post('/api/move', { uci });
+          render(ns);
+        } catch(e){
+          // On illegal, refresh state and keep UX consistent
+          const st = await api.get('/api/state');
+          render(st);
+        }
+      }
+    };
+  });
+
+  // Piece drag handlers
+  document.querySelectorAll('.piece').forEach(piece => {
+    piece.ondragstart = (e) => {
+      const square = piece.parentElement.dataset.square;
+      e.dataTransfer.setData('text/plain', square);
+      e.dataTransfer.effectAllowed = 'move';
+
+      // Show legal moves for this piece
+      showLegal(square);
+
+      // Add dragging class for visual feedback
+      piece.classList.add('dragging');
+    };
+
+    piece.ondragend = () => {
+      // Clean up visual feedback
+      document.querySelectorAll('.sq').forEach(s => {
+        s.classList.remove('drag-over');
+      });
+      piece.classList.remove('dragging');
     };
   });
 }

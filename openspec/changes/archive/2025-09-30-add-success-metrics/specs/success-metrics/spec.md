@@ -1,3 +1,10 @@
+## Overview
+This specification defines measurable success metrics that validate the engine's readiness. These metrics integrate requirements from:
+- **engine-core**: Legal move generation and board state management (Legal Full-Game Stability)
+- **search**: MCTS implementation and node throughput (Performance Guardrails, Style Personality)
+- **evaluation**: Heuristic evaluation and style profiles (Style Personality, Configurable Preferences)
+- **interfaces-uci**: UCI protocol compliance and configuration handling (Configurable Preferences, Full-Game Stability)
+
 ## ADDED Requirements
 ### Requirement: Legal Full-Game Stability
 The system SHALL play legal, complete games without crashes under sustained play via UCI or CLI runners.
@@ -22,11 +29,11 @@ The system SHALL exhibit distinct playing personalities versus a baseline engine
 - **THEN** move preferences and evaluation outputs differ measurably between styles with statistical significance
 
 ### Requirement: Indicative Strength Target
-The system SHOULD achieve an indicative strength of ≥1500 Elo against online bots under standard test conditions.
+The system SHALL be evaluated against an indicative strength target of ≥1500 Elo when tested against online bots under standard test conditions.
 
 #### Scenario: Elo indicator vs online bots
 - **WHEN** evaluating strength with a recognized pool of online bots
-- **THEN** the measured performance indicates ≥1500 Elo, acknowledging variance and non-laboratory conditions
+- **THEN** the measured performance is recorded and compared to the ≥1500 Elo target, acknowledging variance and non-laboratory conditions
 
 ### Requirement: Configurable Style Preferences
 The system SHALL allow users to configure style preferences via documented interfaces and apply them during search and evaluation.

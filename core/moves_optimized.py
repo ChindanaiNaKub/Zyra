@@ -98,29 +98,12 @@ class OptimizedMoveGenerator:
     @profile_method("optimized_generate_moves_internal")
     def _generate_moves_internal(self, board: Any) -> List[Move]:
         """Internal move generation with optimizations."""
-        legal_moves = []
-        side_white = board.side_to_move == "w"
+        # For now, fall back to standard implementation to ensure correctness
+        # TODO: Implement optimized legality checking
+        from core.moves import generate_moves as standard_generate_moves
 
-        # Fast iteration over board
-        for from_sq in range(128):
-            if _is_offboard_cached(from_sq):
-                continue
-
-            piece = board.squares[from_sq]
-            if piece == "\u0000":
-                continue
-
-            # Check if piece belongs to current side
-            if side_white and not _is_white_cached(piece):
-                continue
-            if not side_white and not _is_black_cached(piece):
-                continue
-
-            # Generate moves for this piece
-            piece_moves = self._generate_piece_moves(board, from_sq, piece)
-            legal_moves.extend(piece_moves)
-
-        return legal_moves
+        # Temporarily disable optimization to use standard implementation
+        return standard_generate_moves(board)
 
     def _generate_piece_moves(self, board: Any, from_sq: int, piece: str) -> List[Move]:
         """Generate moves for a specific piece."""

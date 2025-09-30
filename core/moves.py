@@ -575,8 +575,9 @@ try:
     _generate_moves_standard = generate_moves
     _is_legal_move_standard = is_legal_move
 
-    generate_moves = generate_moves_optimized  # type: ignore
-    is_legal_move = is_legal_move_optimized  # type: ignore
+    # Temporarily disable optimized version due to bugs
+    # generate_moves = generate_moves_optimized  # type: ignore
+    # is_legal_move = is_legal_move_optimized  # type: ignore
 
     # Export the optimized generator
     __all__ = [

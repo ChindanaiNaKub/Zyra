@@ -174,6 +174,12 @@ class UCIEngine:
 
         # Create optimized search engine with parameters
         max_playouts = max_nodes if max_nodes else 10000
+        # Use current time as seed for randomness if no seed provided
+        if seed is None:
+            import time
+
+            seed = int(time.time() * 1000000) % (2**31)
+
         self.search_engine = OptimizedMCTSSearch(
             max_playouts=max_playouts,
             movetime_ms=movetime_ms,
@@ -196,6 +202,36 @@ class UCIEngine:
             chosen = random.choice(legal_moves)
             uci_move = f"{self._sq(chosen.from_square)}{self._sq(chosen.to_square)}"
             return f"bestmove {uci_move}"
+
+    def go(
+        self,
+        movetime: Optional[int] = None,
+        nodes: Optional[int] = None,
+        wtime: Optional[int] = None,
+        btime: Optional[int] = None,
+        winc: Optional[int] = None,
+        binc: Optional[int] = None,
+    ) -> str:
+        """
+        Direct method to search for a best move, bypassing UCI command parsing.
+        This is used by GUI applications that need direct access to the engine.
+        """
+        # Build args list similar to what UCI command would provide
+        args = []
+        if movetime is not None:
+            args.extend(["movetime", str(movetime)])
+        if nodes is not None:
+            args.extend(["nodes", str(nodes)])
+        if wtime is not None:
+            args.extend(["wtime", str(wtime)])
+        if btime is not None:
+            args.extend(["btime", str(btime)])
+        if winc is not None:
+            args.extend(["winc", str(winc)])
+        if binc is not None:
+            args.extend(["binc", str(binc)])
+
+        return self._handle_go_command(args)
 
     def _sq(self, index: int) -> str:
         file_idx = index & 0x7
